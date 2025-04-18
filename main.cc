@@ -85,7 +85,7 @@ int main(int argc, char *argv[])
     int test_begin = 0;
     int test_end = 1;
     for(int i = test_begin; i <= test_end; ++i){
-        long double ans = 0;
+        long double ans = 0;s2312236
         int n_, p_;
         fRead(a, b, &n_, &p_, i);
         auto Start = std::chrono::high_resolution_clock::now();
