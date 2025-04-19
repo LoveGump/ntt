@@ -6,6 +6,9 @@
 #include <iomanip>
 #include <sys/time.h>
 #include <omp.h>
+#include <cmath>
+#include <complex>
+#include <algorithm>
 // 可以自行添加需要的头文件
 
 void fRead(int *a, int *b, int *n, int *p, int input_id){
@@ -71,6 +74,251 @@ void poly_multiply(int *a, int *b, int *ab, int n, int p){
         }
     }
 }
+// 1. 位逆序置换函数
+void reverse(int *rev, int n, int bit) {
+    // rev 是存储反转后的索引数组, n 是数组长度，bit 是二进制位数
+    // i 的反转 = (i/2) 的反转去掉最高位后，再补上 i 的最低位作为最高位。
+    rev[0] = 0;
+    for (int i = 0; i < n; i++) {
+        // 二进制反转, rev[i] = 0;
+        rev[i] = (rev[i >> 1] >> 1) | ((i & 1) << (bit - 1));
+    }
+
+}
+// 快速幂
+int pow(int base, int exp, int mod) 
+{
+    int res = 1;
+    while (exp > 0) 
+    {
+        if (exp & 1) 
+        {
+            res = 1LL * res * base % mod;
+        }
+        base = 1LL * base * base % mod;
+        exp >>= 1;
+    }
+    return res;
+}
+using  Comp = std::complex<double> ;// 复数类型
+constexpr Comp I(0, 1);  // i
+constexpr int MAX_N = 1 << 20;
+Comp tmp[MAX_N]; // 临时数组
+
+// DFT（离散傅立叶变换） 来实现FFT（快速傅立叶变换）
+
+// 递归 DFT
+// a 是输入数组，n 是数组长度，rev 是正向还是逆向变换
+// rev = 1 表示正向变换，rev = -1 表示逆向变换
+void DFT(Comp *a, int n, int rev) {
+    if (n == 1) return;// 递归终止条件
+    
+    for (int i = 0; i < n; ++i) tmp[i] = a[i];
+
+    // 偶数放在左面 ，奇数放在右面
+    for (int i = 0; i < n; ++i) {
+        if (i & 1) // 奇数
+            a[n / 2 + i / 2] = tmp[i];
+        else    // 偶数
+            a[i / 2] = tmp[i];
+    }
+    // 分别对偶数和奇数部分进行递归 DFT
+    // g是偶数，h是奇数
+    DFT(a, n / 2, rev);
+    DFT(a + n / 2, n / 2, rev);
+   
+    Comp cur(1,0), step(cos(2 * M_PI / n), sin(2 * M_PI * rev / n));
+    // 这里的 cur 是当前单位复根，对于 k = 0 而言，它对应的单位复根 omega^0_n = 1。
+    for (int k = 0; k < n / 2; ++k) {
+        tmp[k] = a[k] + cur * a[k + n / 2];
+        tmp[k + n / 2] = a[k] - cur * a[k + n / 2];
+        cur *= step;
+    }
+    for (int i = 0; i < n; ++i) a[i] = tmp[i];
+}
+
+// 迭代FFT
+// on = 1 表示正向变换，on = -1 表示逆向变换
+void FFT_Iteration(Comp *a, int n, int on){
+    // 迭代FFT实现
+    // 计算二进制位数
+    int bit = 0;
+    while ((1 << bit) < n) bit++;
+
+    int *rev = new int[n];
+    reverse(rev, n, bit); // 20 是二进制位数，n <= 2^20
+    for(int i =0 ; i< n; i++){
+        if(i < rev[i]){
+            std::swap(a[i], a[rev[i]]); // 位逆序置换
+        }
+    }
+    // 蝶形操作
+    for(int len = 2; len <= n; len <<= 1){
+        // len 是当前的蝶形长度，len = 2^k
+        // wlen 是当前的单位复根，wlen = exp(2 * pi * i / len) ,单位圆的 len 等分
+        Comp wlen = on == -1 ? std::exp(Comp(0, -2 * M_PI / len)) : std::exp(Comp(0, 2 * M_PI / len)); // 原根
+        // 合并 一共合并 n / len 次
+        for(int i = 0; i < n; i += len){
+            Comp w (1,0); // 当前单位复根 omega^k_n ，初始 k = 0 ，值为1
+
+            // 每一部分 合并 len/2 次
+            for(int j = 0 ; j < len / 2; j ++){
+                
+                Comp u = a[i + j];
+                Comp v = a[i + j + len / 2] * w;
+                // F(omega^k*n) = G(omega^k\_{n/2}) + omega^k_n*H(omega^k\_{n/2})
+                a[i + j] = u + v;
+                // F(omega^{k+n/2}*n) = G(omega^k*{n/2}) - omega^k_n*H(omega^k\_{n/2})
+                a[i + j + len / 2] = u - v;
+                w *= wlen;
+            }
+        }
+    }
+
+    if (on == -1) {
+        for (int i = 0; i < n; i++) {
+            a[i] /= n;  // 逆变换结果除以 n
+        }
+    }
+}
+void FFT_multiply(int *a, int *b, int *result, int n, int p){
+    // 计算可以容纳结果的2的幂次长度
+    int len = 1;
+    while (len < 2 * n) len <<= 1;
+
+    // 创建临时数组
+    Comp *fa = new Comp[len];
+    Comp *fb = new Comp[len];
+
+    // 复制输入数组并填充0
+    for (int i = 0; i < n; i++) {
+        fa[i] = a[i];
+        fb[i] = b[i];
+    }
+    for (int i = n; i < len; i++) {
+        fa[i] = fb[i] = 0;
+    }
+
+    // 正向FFT
+    FFT_Iteration(fa, len, 1);
+    FFT_Iteration(fb, len, 1);
+
+    // 点值表示下的乘法
+    for (int i = 0; i < len; i++) {
+        fa[i] *= fb[i];
+    }
+
+    // 逆向FFT得到结果
+    FFT_Iteration(fa, len, -1);
+
+    // 复制结果
+    for (int i = 0; i < 2 * n - 1; i++) {
+        result[i] = static_cast<int>(fa[i].real() + 0.5) % p;
+        if (result[i] < 0) result[i] += p; // 确保结果非负
+    }
+
+    delete[] fa;
+    delete[] fb;
+}
+
+// NTT函数（数论变换）
+// 迭代NTT实现，模仿FFT的实现 将 w 替换为原根 g
+// a 是输入数组，n 是数组长度，invert 是是否进行逆变换
+// p 是模数，g 是原根
+void NTT(int *a, int n, bool invert, int p, int g) {
+    // 计算二进制位数
+    int bit = 0;
+    while ((1 << bit) < n) bit++;
+    
+    // 位逆序置换
+    int *rev = new int[n];
+    reverse(rev, n, bit);
+    for (int i = 0; i < n; i++) {
+        if (i < rev[i]) {
+            std::swap(a[i], a[rev[i]]);
+        }
+    }
+    
+    // 蝶形操作
+    for (int len = 2; len <= n; len <<= 1) {
+        // len 是当前的蝶形长度，len = 2^k
+        // wlen 是当前的单位根，wlen = g^(p-1)/len
+        // 计算单位根，原根为g，G^((p-1)/len)
+        // 如果invert为true，则单位根为g^((p-1)/len) 的逆元
+        int g_n = invert ? pow(g, (p - 1) - (p - 1) / len, p) : pow(g, (p - 1) / len, p);
+        
+        // 处理每个块
+        for (int i = 0; i < n; i += len) {
+            int g = 1; // 初始单位根为1 k = 0 ，g = 1
+            
+            // 处理每个蝶形单元
+            for (int j = 0; j < len / 2; j++) {
+                int u = a[i + j];
+                int v = (1LL * a[i + j + len / 2] * g) % p;
+                // F(omega^k*n) = G(omega^k\_{n/2}) + omega^k_n*H(omega^k\_{n/2})
+                a[i + j] = (u + v) % p;
+                // F(omega^{k+n/2}*n) = G(omega^k*{n/2}) - omega^k_n*H(omega^k\_{n/2})
+                a[i + j + len / 2] = (u - v + p) % p; // 注意要加上p再取模，保证结果非负
+                
+                g = (1LL * g * g_n) % p; // 更新单位根
+            }
+        }
+    }
+    
+    // 如果是逆变换，需要除以n（即乘以n的模p逆元）
+    if (invert) {
+        int inv_n = pow(n, p - 2, p); // 使用费马小定理计算逆元
+        for (int i = 0; i < n; i++) {
+            a[i] = (1LL * a[i] * inv_n) % p;
+        }
+    }
+    
+    delete[] rev;
+}
+
+// 使用NTT的多项式乘法
+void NTT_multiply(int *a, int *b, int *result, int n, int p) {
+    // 计算可以容纳结果的2的幂次长度
+    int len = 1;
+    while (len < 2 * n) len <<= 1;
+    
+    // 创建临时数组
+    int *fa = new int[len];
+    int *fb = new int[len];
+    
+    // 复制输入数组并填充0
+    for (int i = 0; i < n; i++) {
+        fa[i] = a[i];
+        fb[i] = b[i];
+    }
+    for (int i = n; i < len; i++) {
+        fa[i] = fb[i] = 0;
+    }
+    
+    // 确定原根
+    int g = 3;
+    
+    // 正向NTT
+    NTT(fa, len, false, p, g);
+    NTT(fb, len, false, p, g);
+    
+    // 点值表示下的乘法
+    for (int i = 0; i < len; i++) {
+        fa[i] = (1LL * fa[i] * fb[i]) % p;
+    }
+    
+    // 逆向NTT得到结果
+    NTT(fa, len, true, p, g);
+    
+    // 复制结果
+    for (int i = 0; i < 2 * n - 1; i++) {
+        result[i] = fa[i];
+    }
+    
+    delete[] fa;
+    delete[] fb;
+}
+
 
 int a[300000], b[300000], ab[300000];
 int main(int argc, char *argv[])
@@ -83,14 +331,14 @@ int main(int argc, char *argv[])
     // 输入文件共五个, 第一个输入文件 n = 4, 其余四个文件分别对应四个模数, n = 131072
     // 在实现快速数论变化前, 后四个测试样例运行时间较久, 推荐调试正确性时只使用输入文件 1
     int test_begin = 0;
-    int test_end = 1;
+    int test_end = 4;
     for(int i = test_begin; i <= test_end; ++i){
-        long double ans = 0;s2312236
+        long double ans = 0;
         int n_, p_;
         fRead(a, b, &n_, &p_, i);
         auto Start = std::chrono::high_resolution_clock::now();
         // TODO : 将 poly_multiply 函数替换成你写的 ntt
-        poly_multiply(a, b, ab, n_, p_);
+        NTT_multiply(a, b, ab, n_, p_);
         auto End = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double,std::ratio<1,1000>>elapsed = End - Start;
         ans += elapsed.count();
