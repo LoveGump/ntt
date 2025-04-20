@@ -74,6 +74,9 @@ void poly_multiply(int *a, int *b, int *ab, int n, int p){
         }
     }
 }
+
+
+
 // 1. 位逆序置换函数
 void reverse(int *rev, int n, int bit) {
     // rev 是存储反转后的索引数组, n 是数组长度，bit 是二进制位数
@@ -100,6 +103,8 @@ int pow(int base, int exp, int mod)
     }
     return res;
 }
+
+
 using  Comp = std::complex<double> ;// 复数类型
 constexpr Comp I(0, 1);  // i
 constexpr int MAX_N = 1 << 20;
@@ -156,6 +161,7 @@ void FFT_Iteration(Comp *a, int n, int on){
     for(int len = 2; len <= n; len <<= 1){
         // len 是当前的蝶形长度，len = 2^k
         // wlen 是当前的单位复根，wlen = exp(2 * pi * i / len) ,单位圆的 len 等分
+        // 如果是逆变换，则 wlen = exp(-2 * pi * i / len)
         Comp wlen = on == -1 ? std::exp(Comp(0, -2 * M_PI / len)) : std::exp(Comp(0, 2 * M_PI / len)); // 原根
         // 合并 一共合并 n / len 次
         for(int i = 0; i < n; i += len){
@@ -220,6 +226,7 @@ void FFT_multiply(int *a, int *b, int *result, int n, int p){
     delete[] fa;
     delete[] fb;
 }
+
 
 // NTT函数（数论变换）
 // 迭代NTT实现，模仿FFT的实现 将 w 替换为原根 g
@@ -320,6 +327,517 @@ void NTT_multiply(int *a, int *b, int *result, int n, int p) {
 }
 
 
+class Montgomery {
+    public:
+        uint64_t N;    // 模数
+        uint64_t R;    // 通常选择2^k且满足 R > N, gcd(R,N)=1
+        uint64_t logR; // R的二进制位数（如R=2^64 → logR=64）
+        uint64_t N_inv_neg; // -N⁻¹ mod R
+        uint64_t R2;   // R² mod N
+    
+
+        // 扩展欧几里得算法求模逆元
+    static int64_t extendedGCD(int64_t a, int64_t b, int64_t& x, int64_t& y) {
+        if (a == 0) {
+            x = 0;
+            y = 1;
+            return b;
+        }
+        int64_t x1, y1;
+        int64_t gcd = extendedGCD(b % a, a, x1, y1);
+        x = y1 - (b / a) * x1;
+        y = x1;
+        return gcd;
+    }
+    
+        // 计算a⁻¹ mod m
+        static uint64_t modinv(uint64_t a, uint64_t m) {
+            int64_t x, y;
+            int64_t gcd = extendedGCD(a, m, x, y);
+
+            if (gcd != 1) {
+                throw std::runtime_error("不存在模逆元");
+            }
+            return (x % uint64_t(m) + m) % m; // 确保结果为正
+        }
+    
+    public:
+        // 构造函数
+        Montgomery(uint64_t N ) : N(N){
+            if (N == 0 || (N & 1) == 0) {
+                throw std::runtime_error("N 必须是正奇数");
+            }
+    
+            // 计算R为大于N的最小2^k
+            this->logR = 32; // 使用32位整数
+            this->R = (1ULL << logR); // R = 2^32
+            if (R <= N) {
+                throw std::runtime_error("R 必须大于 N");
+            }
+    
+            // 计算N⁻¹ mod R
+            uint64_t N_inv = modinv(N, R);
+            this->N_inv_neg = R - N_inv; // -N⁻¹ mod R
+    
+            // 预计算R² mod N
+            this->R2 = (R % N) * (R % N) % N;
+        }
+    
+        // Montgomery约简算法
+        // T 是待约简的数
+        // 返回值是约简后的结果
+        // 结果范围在[0, N-1]之间
+        uint64_t REDC(uint64_t T) const {
+            uint64_t m = ((T & (R - 1)) * N_inv_neg) & (R - 1); // m = (T mod R) * (-N⁻¹) mod R
+            uint64_t t = (T + m * N) >> logR; // t = (T + mN)/R
+    
+            // 结果规约到[0, N-1]
+            return (t >= N) ? t - N : t;
+        }
+    
+        // Montgomery乘法
+        uint64_t multiply(uint64_t a, uint64_t b) const {
+            if (a >= N || b >= N) {
+                throw std::runtime_error("输入值必须小于模数 N");
+            }
+    
+            // 转换为Montgomery形式
+            uint64_t aR = REDC(a * R2);
+            uint64_t bR = REDC(b * R2);
+    
+            // 标准乘法
+            uint64_t T = aR * bR;
+    
+            // 约简并转换回普通形式
+            uint64_t abR = REDC(T);
+            return REDC(abR);
+        }
+    
+        // 辅助函数：快速模幂（利用Montgomery乘法）
+        uint64_t pow(uint64_t x, uint64_t power) const {
+            // 转换为Montgomery形式
+            uint64_t xR = REDC(x * R2);
+            uint64_t resultR = REDC(1 * R2); // 1 in Montgomery form
+    
+            while (power > 0) {
+                if (power & 1) {
+                    resultR = REDC(resultR * xR);
+                }
+                xR = REDC(xR * xR);
+                power >>= 1;
+            }
+    
+            // 转换回普通形式
+            return REDC(resultR);
+        }
+};
+    
+void NTT_Montgomery(int *a, int n, bool invert, int p) {
+    // 创建Montgomery实例
+    Montgomery mont(p);
+    
+    // 计算二进制位数
+    int bit = 0;
+    while ((1 << bit) < n) bit++;
+    
+    // 位逆序置换(不变)
+    int *rev = new int[n];
+    reverse(rev, n, bit);
+    for (int i = 0; i < n; i++) {
+        if (i < rev[i]) {
+            std::swap(a[i], a[rev[i]]);
+        }
+    }
+    
+    // 蝶形操作
+    for (int len = 2; len <= n; len <<= 1) {
+        // 使用Montgomery计算单位根
+        int g = 3; // 原根
+
+        //g_n^1
+        int g_n = invert ? 
+            pow(g, (p - 1) - (p - 1) / len, p) : 
+            pow(g, (p - 1) / len, p);
+
+        int step = len >> 1;
+        // step 是当前的蝶形步长，step = len / 2
+        for (int i = 0; i < n; i += len) {
+            uint64_t g_pow = 1; // 当前单位根幂次
+            
+            for (int j = 0; j < step; j++) {
+                uint64_t u = a[i + j];
+                // 使用Montgomery乘法
+                uint64_t v = mont.multiply(a[i + j + step], g_pow);
+                
+                a[i + j] = (u + v) % p;
+                a[i + j + step] = (u - v + p) % p;
+                
+                // 更新单位根
+                g_pow = mont.multiply(g_pow, g_n);
+            }
+        }
+    }
+    
+    // 处理逆变换的系数
+    if (invert) {
+        int inv_n = pow(n, p - 2, p);
+        for (int i = 0; i < n; i++) {
+            a[i] = mont.multiply(a[i], inv_n);
+        }
+    }
+    
+    delete[] rev;
+}
+
+void NTT_multiply_Montgomery(int *a, int *b, int *result, int n, int p) {
+    // 准备工作不变
+    int len = 1;
+    while (len < 2 * n) len <<= 1;
+    
+    int *fa = new int[len];
+    int *fb = new int[len];
+    
+    for (int i = 0; i < n; i++) {
+        fa[i] = a[i];
+        fb[i] = b[i];
+    }
+    for (int i = n; i < len; i++) {
+        fa[i] = fb[i] = 0;
+    }
+    
+    // 使用Montgomery优化的NTT
+    NTT_Montgomery(fa, len, false, p);
+    NTT_Montgomery(fb, len, false, p);
+    
+    // 点值乘法也使用Montgomery优化
+    Montgomery mont(p);
+    for (int i = 0; i < len; i++) {
+        fa[i] = mont.multiply(fa[i], fb[i]);
+    }
+    
+    // 逆NTT
+    NTT_Montgomery(fa, len, true, p);
+    
+    // 复制结果
+    for (int i = 0; i < 2 * n - 1; i++) {
+        result[i] = fa[i];
+    }
+    
+    delete[] fa;
+    delete[] fb;
+}
+
+// 基4NTT
+// 这里的基4NTT是基于基2NTT的优化版本
+// 通过将输入数据分成4个部分来减少蝶形操作的次数
+// 基4的位逆序置换函数
+void reverse_radix4(int* a, int n) {
+
+    int log4n = 0; // log4n是n的基4对数
+    int temp = n; // 临时变量
+    while (temp > 1) 
+    {
+        temp >>= 2;
+        log4n++;
+    }
+    // 位逆序置换
+    // 这里的位逆序置换是基于基4的
+    // 通过将每个数的二进制位进行反转来实现
+    // 预计算位逆序表
+    int *rev = new int[n];
+    for (int i = 0; i < n; i++) {
+        int reversed = 0;
+        int num = i;
+        for (int j = 0; j < log4n; j++) {
+            reversed = (reversed << 2) | (num & 3);
+            num >>= 2;
+        }
+        rev[i] = reversed;
+    }
+
+    // 位逆序置换
+    for (int i = 0; i < n; i++) {
+        if (i < rev[i]) {
+            std::swap(a[i], a[rev[i]]);
+        }
+    }
+    delete[] rev;
+}
+
+void NTT_base4(int *a, int n, bool invert, int p) {
+    // n 是数组长度，invert 是是否进行逆变换
+    Montgomery mont(p);
+    // 计算二进制位数
+    
+    reverse_radix4(a, n);
+    
+    // 蝶形操作
+    for (int len = 4; len <= n; len <<= 2) {
+        // len 是当前的蝶形长度，len = 4^k
+        // wlen 是当前的单位根，wlen = g^(p-1)/len
+        // 计算单位根，原根为g，G^((p-1)/len)
+        // 如果invert为true，则单位根为g^((p-1)/len) 的逆元
+        // 使用Montgomery计算单位根
+        int g = 3; // 原根
+        // g_n^1
+        int g_n = invert ? 
+            pow(g, (p - 1) - (p - 1) / len, p) : 
+            pow(g, (p - 1) / len, p);
+
+         // 预计算单位根幂
+        uint64_t g_n2 = mont.multiply(g_n, g_n);
+        uint64_t g_n3 = mont.multiply(g_n2, g_n);   
+        int step = len >> 2;
+        uint64_t g_pow_step = pow(g_n, step, p);
+        
+        for (int i = 0; i < n; i += len) {
+            // 处理每个蝴蝶形单元
+            // 这里的len是4的幂次
+
+            uint64_t w[4] = {1, 1, 1, 1}; // 当前单位根幂次
+
+            // 当前单位根幂次
+            uint64_t u[4];
+            for (int j = 0; j <  len / 4 ; j++) {
+                if(j == 0){
+                    for(int k = 0; k < 4; k++){
+
+                        u[k] =  a[i + j + k * step];
+                    }
+                }else{
+                    for(int k = 0; k < 4; k++){
+
+                        u[k] = mont.multiply( a[i + j + k * step] , w[k]);
+                    }
+                }
+                uint64_t j_1 = mont.multiply(u[1], g_pow_step);
+                uint64_t j_3 = mont.multiply(u[3], g);
+
+                a[i + j]= (u[0] + u[1] + u[2] + u[3] ) % p;
+                a[i + j + step] = (u[0] + j_1 + p - u[2] + p - j_3) % p;
+                a[i + j + 2 * step] = (u[0] + p - u[1] + u[2] + p - u[3]) % p;
+                a[i + j + 3 * step]= (u[0] + p - j_1 + p - u[2] + j_3) % p;
+                w[1] = mont.multiply(w[1], g_n);
+                w[2] = mont.multiply(w[2], g_n2);
+                w[3] = mont.multiply(w[3], g_n3);
+            }
+        }
+    }
+    // 处理逆变换的系数
+    if (invert) {
+        int inv_n = pow(n, p - 2, p);
+        for (int i = 0; i < n; i++) {
+            a[i] = mont.multiply(a[i], inv_n);
+        }
+    }
+}
+
+void NTT_multiply_base4(int *a, int *b, int *result, int n, int p) {
+    // 准备工作不变
+    // len 为4的幂次
+    int len = 1;
+    while (len < 2 * n) len <<= 2;
+    
+    int *fa = new int[len];
+    int *fb = new int[len];
+    
+    for (int i = 0; i < n; i++) {
+        fa[i] = a[i];
+        fb[i] = b[i];
+    }
+    for (int i = n; i < len; i++) {
+        fa[i] = fb[i] = 0;
+    }
+    
+    // 使用基4 NTT
+    NTT_base4(fa, len, false, p);
+    NTT_base4(fb, len, false, p);
+    
+    // 点值乘法也使用Montgomery优化
+    Montgomery mont(p);
+    for (int i = 0; i < len; i++) {
+        fa[i] = mont.multiply(fa[i], fb[i]);
+    }
+    
+    // 逆NTT
+    NTT_base4(fa, len, true, p);
+    
+    // 复制结果
+    for (int i = 0; i < 2 * n - 1; i++) {
+        result[i] = fa[i];
+    }
+    
+    delete[] fa;
+    delete[] fb;
+}
+// #ifdef __ARM_NEON
+// #include <arm_neon.h>
+// #elif defined(__AVX2__)
+// #include <immintrin.h>
+// #endif
+
+// void NTT_base4_SIMD(int *a, int n, bool invert, int p) {
+//     // n 是数组长度，invert 是是否进行逆变换
+//     Montgomery mont(p);
+    
+//     // 位逆序置换
+//     reverse_radix4(a, n);
+    
+//     // 预先将所有数据转换到Montgomery域
+//     for (int i = 0; i < n; i++) {
+//         a[i] = mont.REDC(a[i] * mont.R2);
+//     }
+    
+//     // 蝶形操作
+//     for (int len = 4; len <= n; len <<= 2) {
+//         // 计算基础单位根
+//         int g = 3; // 原根
+//         int g_n = invert ? 
+//             pow(g, (p - 1) - (p - 1) / len, p) : 
+//             pow(g, (p - 1) / len, p);
+            
+//         // 预计算单位根幂
+//         uint64_t g_n1 = mont.REDC(g_n * mont.R2); // g_n在Montgomery域
+//         uint64_t g_n2 = mont.REDC(g_n1 * g_n1);   // g_n^2
+//         uint64_t g_n3 = mont.REDC(g_n2 * g_n1);   // g_n^3
+        
+//         int step = len >> 2;
+//         uint64_t g_pow_step = mont.REDC(pow(g_n, step, p) * mont.R2); // g_n^step在Montgomery域
+
+        
+//         for (int i = 0; i < n; i += len) {
+//             // 处理每个蝴蝶形单元
+//             uint64_t w[4] = {mont.REDC(1 * mont.R2), mont.REDC(1 * mont.R2), 
+//                              mont.REDC(1 * mont.R2), mont.REDC(1 * mont.R2)}; // 初始化为Montgomery域中的1
+            
+            
+//             // NEON SIMD优化版本
+//             uint32_t p_arr[4] = {p, p, p, p};
+//             uint32x4_t vp = vld1q_u32(p_arr);
+            
+//             for (int j = 0; j < len/4; j++) {
+//                 // 加载数据
+//                 uint64_t u[4];
+                
+//                 if (j == 0) {
+//                     u[0] = a[i + j];
+//                     u[1] = a[i + j + step];
+//                     u[2] = a[i + j + 2*step];
+//                     u[3] = a[i + j + 3*step];
+//                 } else {
+//                     // 使用REDC直接计算乘法，避免重复转换域
+//                     u[0] = mont.REDC(a[i + j] * w[0]);
+//                     u[1] = mont.REDC(a[i + j + step] * w[1]);
+//                     u[2] = mont.REDC(a[i + j + 2*step] * w[2]);
+//                     u[3] = mont.REDC(a[i + j + 3*step] * w[3]);
+//                 }
+                
+//                 // 计算旋转因子
+//                 uint64_t j_1 = mont.REDC(u[1] * g_pow_step);
+//                 uint64_t j_3 = mont.REDC(u[3] * g_pow_step);
+                
+//                 // 使用SIMD指令进行加减运算
+//                 uint32_t sum1[4] = {(uint32_t)u[0], (uint32_t)u[0], (uint32_t)u[0], (uint32_t)u[0]};
+//                 uint32_t sum2[4] = {(uint32_t)u[1], (uint32_t)j_1, (uint32_t)(p-u[1]), (uint32_t)(p-j_1)};
+//                 uint32_t sum3[4] = {(uint32_t)u[2], (uint32_t)(p-u[2]), (uint32_t)u[2], (uint32_t)(p-u[2])};
+//                 uint32_t sum4[4] = {(uint32_t)u[3], (uint32_t)(p-j_3), (uint32_t)(p-u[3]), (uint32_t)j_3};
+                
+//                 uint32x4_t v1 = vld1q_u32(sum1);
+//                 uint32x4_t v2 = vld1q_u32(sum2);
+//                 uint32x4_t v3 = vld1q_u32(sum3);
+//                 uint32x4_t v4 = vld1q_u32(sum4);
+                
+//                 // 计算四个输出
+//                 uint32x4_t result = vaddq_u32(vaddq_u32(v1, v2), vaddq_u32(v3, v4));
+                
+//                 // 模p归约
+//                 uint32_t out[4];
+//                 vst1q_u32(out, result);
+                
+//                 a[i + j] = out[0] % p;
+//                 a[i + j + step] = out[1] % p;
+//                 a[i + j + 2*step] = out[2] % p;
+//                 a[i + j + 3*step] = out[3] % p;
+                
+//                 // 更新旋转因子
+//                 w[1] = mont.REDC(w[1] * g_n1);
+//                 w[2] = mont.REDC(w[2] * g_n2);
+//                 w[3] = mont.REDC(w[3] * g_n3);
+//             }
+
+//         }
+//     }
+    
+//     // 处理逆变换的系数
+//     if (invert) {
+//         int inv_n = pow(n, p - 2, p);
+//         uint64_t inv_n_mont = mont.REDC(inv_n * mont.R2); // 转到Montgomery域
+        
+//         #pragma omp parallel for
+//         for (int i = 0; i < n; i++) {
+//             a[i] = mont.REDC(a[i] * inv_n_mont);
+//         }
+//     }
+    
+//     // 将结果从Montgomery域转回普通域
+//     #pragma omp parallel for
+//     for (int i = 0; i < n; i++) {
+//         a[i] = mont.REDC(a[i]); // 从Montgomery域转回
+//     }
+// }
+
+// void NTT_multiply_base4_SIMD(int *a, int *b, int *result, int n, int p) {
+//     // 准备工作不变，但len需要是4的幂次
+//     int len = 1;
+//     while (len < 2 * n) {
+//         if (len < 4) 
+//             len = 4;
+//         else
+//             len <<= 2;
+//     }
+    
+//     int *fa = new int[len];
+//     int *fb = new int[len];
+    
+//     // 使用OpenMP并行复制
+//     #pragma omp parallel sections
+//     {
+//         #pragma omp section
+//         {
+//             std::copy(a, a + n, fa);
+//             std::fill(fa + n, fa + len, 0);
+//         }
+        
+//         #pragma omp section
+//         {
+//             std::copy(b, b + n, fb);
+//             std::fill(fb + n, fb + len, 0);
+//         }
+//     }
+    
+//     // 使用SIMD优化的基4 NTT
+//     NTT_base4_SIMD(fa, len, false, p);
+//     NTT_base4_SIMD(fb, len, false, p);
+    
+//     // 点值乘法并行化
+//     Montgomery mont(p);
+//     #pragma omp parallel for
+//     for (int i = 0; i < len; i++) {
+//         fa[i] = mont.multiply(fa[i], fb[i]);
+//     }
+    
+//     // 逆NTT
+//     NTT_base4_SIMD(fa, len, true, p);
+    
+//     // 复制结果
+//     std::copy(fa, fa + (2*n - 1), result);
+    
+//     delete[] fa;
+//     delete[] fb;
+// }
+
+
+
 int a[300000], b[300000], ab[300000];
 int main(int argc, char *argv[])
 {
@@ -338,7 +856,9 @@ int main(int argc, char *argv[])
         fRead(a, b, &n_, &p_, i);
         auto Start = std::chrono::high_resolution_clock::now();
         // TODO : 将 poly_multiply 函数替换成你写的 ntt
-        NTT_multiply(a, b, ab, n_, p_);
+         // NTT_multiply(a, b, ab, n_, p_);
+        // NTT_multiply_Montgomery(a, b, ab, n_, p_);
+         NTT_multiply_base4(a, b, ab, n_, p_);
         auto End = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double,std::ratio<1,1000>>elapsed = End - Start;
         ans += elapsed.count();
