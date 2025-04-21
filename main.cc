@@ -10,6 +10,7 @@
 #include <complex>
 #include <algorithm>
 #include <arm_neon.h>
+#include "Mentgomery.h"
 // 可以自行添加需要的头文件
 
 void fRead(int *a, int *b, int *n, int *p, int input_id){
@@ -75,7 +76,6 @@ void poly_multiply(int *a, int *b, int *ab, int n, int p){
         }
     }
 }
-
 
 
 // 1. 位逆序置换函数
@@ -229,11 +229,6 @@ void FFT_multiply(int *a, int *b, int *result, int n, int p){
 }
 
 
-
-
-
-
-
 // NTT函数（数论变换）
 // 迭代NTT实现，模仿FFT的实现 将 w 替换为原根 g
 // a 是输入数组，n 是数组长度，invert 是是否进行逆变换
@@ -331,224 +326,6 @@ void NTT_multiply(int *a, int *b, int *result, int n, int p) {
     delete[] fb;
 }
 
-
-class Montgomery {
-    public:
-        uint64_t N;    // 模数
-        uint64_t R;    // 通常选择2^k且满足 R > N, gcd(R,N)=1
-        uint64_t logR; // R的二进制位数（如R=2^64 → logR=64）
-        uint64_t N_inv_neg; // -N⁻¹ mod R
-        uint64_t R2;   // R² mod N
-    
-
-        // 扩展欧几里得算法求模逆元
-    static int64_t extendedGCD(int64_t a, int64_t b, int64_t& x, int64_t& y) {
-        if (a == 0) {
-            x = 0;
-            y = 1;
-            return b;
-        }
-        int64_t x1, y1;
-        int64_t gcd = extendedGCD(b % a, a, x1, y1);
-        x = y1 - (b / a) * x1;
-        y = x1;
-        return gcd;
-    }
-    
-        // 计算a⁻¹ mod m
-        static uint64_t modinv(uint64_t a, uint64_t m) {
-            int64_t x, y;
-            int64_t gcd = extendedGCD(a, m, x, y);
-
-            if (gcd != 1) {
-                throw std::runtime_error("不存在模逆元");
-            }
-            return (x % uint64_t(m) + m) % m; // 确保结果为正
-        }
-    
-    public:
-        // 构造函数
-        Montgomery(uint64_t N ) : N(N){
-            if (N == 0 || (N & 1) == 0) {
-                throw std::runtime_error("N 必须是正奇数");
-            }
-    
-            // 计算R为大于N的最小2^k
-            this->logR = 32; // 使用32位整数
-            this->R = (1ULL << logR); // R = 2^32
-            if (R <= N) {
-                throw std::runtime_error("R 必须大于 N");
-            }
-    
-            // 计算N⁻¹ mod R
-            uint64_t N_inv = modinv(N, R);
-            this->N_inv_neg = R - N_inv; // -N⁻¹ mod R
-    
-            // 预计算R² mod N
-            this->R2 = (R % N) * (R % N) % N;
-        }
-    
-        // Montgomery约简算法
-        // T 是待约简的数
-        // 返回值是约简后的结果
-        // 结果范围在[0, N-1]之间
-        uint64_t REDC(uint64_t T) const {
-            uint64_t m = ((T & (R - 1)) * N_inv_neg) & (R - 1);
-             // m = (T mod R) * (-N⁻¹) mod R
-            uint64_t t = (T + m * N) >> logR;
-             // t = (T + mN)/R
-    
-            // 结果规约到[0, N-1]
-            return (t >= N) ? t - N : t;
-        }
-    
-        // Montgomery乘法
-        uint64_t multiply(uint64_t a, uint64_t b) const {
-            if (a >= N || b >= N) {
-                throw std::runtime_error("输入值必须小于模数 N");
-            }
-    
-            // 转换为Montgomery形式
-            uint64_t aR = REDC(a * R2);
-            uint64_t bR = REDC(b * R2);
-    
-            // 标准乘法
-            uint64_t T = aR * bR;
-    
-            // 约简并转换回普通形式
-            return REDC(REDC(T));
-        }
-    
-        // 辅助函数：快速模幂（利用Montgomery乘法）
-        uint64_t pow(uint64_t x, uint64_t power) const {
-            // 转换为Montgomery形式
-            uint64_t xR = REDC(x * R2);
-            uint64_t resultR = REDC(1 * R2); // 1 in Montgomery form
-    
-            while (power > 0) {
-                if (power & 1) {
-                    resultR = REDC(resultR * xR);
-                }
-                xR = REDC(xR * xR);
-                power >>= 1;
-            }
-    
-            // 转换回普通形式
-            return REDC(resultR);
-        }
-};
-  
-
-
-class MontgomeryNeon {
-public:
-    uint64_t N;         // 模数
-    uint64_t R;         // R = 2^32
-    uint64_t logR;      // logR = 32
-    uint64_t N_inv_neg; // -N^-1 mod R
-    uint64_t R2;        // R^2 mod N
-    
-    // 构造函数
-    MontgomeryNeon(uint64_t N) : N(N) {
-        if (N == 0 || (N & 1) == 0) {
-            throw std::runtime_error("N 必须是正奇数");
-        }
-
-        // 设置R = 2^32
-        this->logR = 32;
-        this->R = (1ULL << logR);
-        if (R <= N) {
-            throw std::runtime_error("R 必须大于 N");
-        }
-
-        // 复用现有Montgomery类的计算
-        Montgomery mont(N);
-        this->N_inv_neg = mont.N_inv_neg;
-        this->R2 = mont.R2;
-    }
-    
-    // 标准REDC操作
-    uint64_t REDC(uint64_t T) const {
-        uint64_t m = ((T & (R - 1)) * N_inv_neg) & (R - 1);
-        uint64_t t = (T + m * N) >> logR;
-        return (t >= N) ? t - N : t;
-    }
-    
-    // NEON批量REDC - 同时处理4个数
-    void batch_redc_neon(uint32_t* input, uint32_t* output, int count) const {
-        // 准备常量向量
-        uint32x4_t vN = vdupq_n_u32(static_cast<uint32_t>(N));
-        uint32x4_t vN_inv_neg = vdupq_n_u32(static_cast<uint32_t>(N_inv_neg));
-        uint32x4_t vR_minus_1 = vdupq_n_u32(0xFFFFFFFF);  // R-1
-        
-        for (int i = 0; i < count; i += 4) {
-            if (i + 4 <= count) {
-                    // 加载数据
-                uint32x4_t vT = vld1q_u32(&input[i]);
-                
-                // 计算m值: m = ((T & (R - 1)) * N_inv_neg) & (R - 1)
-                uint32x4_t vm = vandq_u32(vmulq_u32(vandq_u32(vT, vR_minus_1), vN_inv_neg), vR_minus_1);
-                
-                // 由于NEON没有64位乘法，手动实现REDC计算
-                uint32_t T_arr[4], m_arr[4];
-                uint32_t N_val = static_cast<uint32_t>(N);
-                vst1q_u32(T_arr, vT);
-                vst1q_u32(m_arr, vm);
-                
-                uint32_t result[4];
-                for (int j = 0; j < 4; j++) {
-                    // 手动计算 t = (T + m*N) >> 32
-                    uint64_t full_res = static_cast<uint64_t>(T_arr[j]) + 
-                                    static_cast<uint64_t>(m_arr[j]) * N_val;
-                    uint32_t high_bits = static_cast<uint32_t>(full_res >> 32);
-                    
-                    // 结果规约到[0, N-1]
-                    result[j] = (high_bits >= N_val) ? high_bits - N_val : high_bits;
-                }
-                
-                // 存储结果
-                vst1q_u32(&output[i], vld1q_u32(result));
-            } else {
-                for (int j = i; j < count; j++) {
-                    output[j] = REDC(input[j]);
-                }
-            }
-               
-        }
-    }
-    
-    // NEON批量乘法
-    void batch_multiply_neon(uint32_t* a, uint32_t* b, uint32_t* result, int count) const {
-        // 创建临时存储
-        uint32_t aR[count], bR[count], temp[count];
-        
-        // 转换到Montgomery域
-        for (int i = 0; i < count; i++) {
-            aR[i] = static_cast<uint32_t>(REDC(static_cast<uint64_t>(a[i]) * R2));
-            bR[i] = static_cast<uint32_t>(REDC(static_cast<uint64_t>(b[i]) * R2));
-        }
-        
-        // 批量处理乘法
-        for (int i = 0; i < count; i += 4) {
-            if (i + 4 <= count) {
-                uint32x4_t va = vld1q_u32(&aR[i]);
-                uint32x4_t vb = vld1q_u32(&bR[i]);
-                
-                // NEON乘法
-                uint32x4_t vResult = vmulq_u32(va, vb);
-                vst1q_u32(&temp[i], vResult);
-            } else {
-                for (int j = i; j < count; j++) {
-                    temp[j] = aR[j] * bR[j];
-                }
-            }
-        }
-        
-        // REDC处理
-        batch_redc_neon(temp, temp, count);
-        batch_redc_neon(temp, result, count);
-    }
-};
 
 void NTT_Montgomery(int *a, int n, bool invert, int p) {
     // 创建Montgomery实例
@@ -907,177 +684,7 @@ void NTT_multiply_base4_Montgomery(int *a, int *b, int *result, int n, int p) {
 }
 
 
-void NTT_base4_NEON(int *a, int n, bool invert, int p) {
-    // 创建MontgomeryNeon实例
-    MontgomeryNeon mont(p);
-    
-    // 位逆序置换
-    reverse_base4(a, n);
-    
-    // 将输入数据转换为uint32类型，用于NEON处理
-    uint32_t* a_uint = reinterpret_cast<uint32_t*>(a);
-    
-    // 蝶形操作
-    for (int len = 4; len <= n; len <<= 2) {
-        // 计算单位根
-        int g = 3; // 原根
-        int g_n = invert ? 
-            pow(g, (p - 1) - (p - 1) / len, p) : 
-            pow(g, (p - 1) / len, p);
 
-        // 预计算单位根幂
-        uint64_t g_n1 = g_n;
-        uint64_t g_n2 = (1LL * g_n * g_n) % p;
-        uint64_t g_n3 = (1LL * g_n2 * g_n) % p;
-        int step = len >> 2;
-        uint64_t g_pow_step = pow(g_n, step, p);
-        
-        // 为NEON准备常量
-        uint32x4_t vp = vdupq_n_u32(p);
-        
-        for (int i = 0; i < n; i += len) {
-            uint64_t w[4] = {1, 1, 1, 1}; // 当前单位根幂次
-            
-            for (int j = 0; j < len / 4; j++) {
-                // 为每个蝶形单元准备数据
-                uint32_t u_data[4], result[4];
-                
-                if (j == 0) {
-                    for (int k = 0; k < 4; k++) {
-                        u_data[k] = a[i + j + k * step];
-                    }
-                } else {
-                    // 批量乘法：a_k * w_k
-                    uint32_t a_batch[4], w_batch[4];
-                    for (int k = 0; k < 4; k++) {
-                        a_batch[k] = a[i + j + k * step];
-                        w_batch[k] = w[k];
-                    }
-                    mont.batch_multiply_neon(a_batch, w_batch, u_data, 4);
-                }
-                
-                // 计算旋转因子
-                uint32_t u1_rot, u3_rot;
-                uint32_t u1_batch[1] = {u_data[1]};
-                uint32_t u3_batch[1] = {u_data[3]};
-                uint32_t g_batch[1] = {static_cast<uint32_t>(g_pow_step)};
-                
-                mont.batch_multiply_neon(u1_batch, g_batch, &u1_rot, 1);
-                mont.batch_multiply_neon(u3_batch, g_batch, &u3_rot, 1);
-                
-                // 蝶形计算
-                uint32_t sum1 = (u_data[0] + u_data[1] + u_data[2] + u_data[3]) % p;
-                uint32_t sum2 = (u_data[0] + u1_rot + p - u_data[2] + p - u3_rot) % p;
-                uint32_t sum3 = (u_data[0] + p - u_data[1] + u_data[2] + p - u_data[3]) % p;
-                uint32_t sum4 = (u_data[0] + p - u1_rot + p - u_data[2] + u3_rot) % p;
-                
-                // 存储结果
-                a[i + j] = sum1;
-                a[i + j + step] = sum2;
-                a[i + j + 2 * step] = sum3;
-                a[i + j + 3 * step] = sum4;
-                
-                // 更新旋转因子
-                uint32_t w_next[4], g_powers[4] = {
-                    static_cast<uint32_t>(g_n1), 
-                    static_cast<uint32_t>(g_n2), 
-                    static_cast<uint32_t>(g_n3), 
-                    0
-                };
-                
-                for (int k = 0; k < 3; k++) {
-                    uint32_t w_batch[1] = {static_cast<uint32_t>(w[k+1])};
-                    uint32_t g_batch[1] = {g_powers[k]};
-                    mont.batch_multiply_neon(w_batch, g_batch, &w_next[k+1], 1);
-                    w[k+1] = w_next[k+1];
-                }
-            }
-        }
-    }
-    
-    // 处理逆变换的系数
-    if (invert) {
-        int inv_n = pow(n, p - 2, p);
-        uint32_t inv_n_batch[4] = {
-            static_cast<uint32_t>(inv_n),
-            static_cast<uint32_t>(inv_n),
-            static_cast<uint32_t>(inv_n),
-            static_cast<uint32_t>(inv_n)
-        };
-        
-        // 批量应用逆元
-        for (int i = 0; i < n; i += 4) {
-            if (i + 4 <= n) {
-                uint32_t a_batch[4], result[4];
-                for (int j = 0; j < 4; j++) {
-                    a_batch[j] = a[i+j];
-                }
-                mont.batch_multiply_neon(a_batch, inv_n_batch, result, 4);
-                for (int j = 0; j < 4; j++) {
-                    a[i+j] = result[j];
-                }
-            } else {
-                for (int j = i; j < n; j++) {
-                    a[j] = mont.REDC(static_cast<uint64_t>(a[j]) * inv_n);
-                }
-            }
-        }
-    }
-}
-
-// 使用并行化的NTT实现多项式乘法
-void NTT_multiply_base4_NEON(int *a, int *b, int *result, int n, int p) {
-    // 准备工作不变
-    // len 为4的幂次
-    int len = 1;
-    while (len < 2 * n) len <<= 2;
-    
-    int *fa = new int[len];
-    int *fb = new int[len];
-    
-    for (int i = 0; i < n; i++) {
-        fa[i] = a[i];
-        fb[i] = b[i];
-    }
-    for (int i = n; i < len; i++) {
-        fa[i] = fb[i] = 0;
-    }
-    
-    // 使用NEON优化的基4 NTT
-    NTT_base4_NEON(fa, len, false, p);
-    NTT_base4_NEON(fb, len, false, p);
-    
-    // 点值乘法使用MontgomeryNeon批量乘法
-    MontgomeryNeon mont(p);
-    for (int i = 0; i < len; i += 4) {
-        if (i + 4 <= len) {
-            uint32_t a_batch[4], b_batch[4], result_batch[4];
-            for (int j = 0; j < 4; j++) {
-                a_batch[j] = fa[i+j];
-                b_batch[j] = fb[i+j];
-            }
-            mont.batch_multiply_neon(a_batch, b_batch, result_batch, 4);
-            for (int j = 0; j < 4; j++) {
-                fa[i+j] = result_batch[j];
-            }
-        } else {
-            for (int j = i; j < len; j++) {
-                fa[j] = mont.REDC(static_cast<uint64_t>(fa[j]) * fb[j]);
-            }
-        }
-    }
-    
-    // 逆NTT
-    NTT_base4_NEON(fa, len, true, p);
-    
-    // 复制结果
-    for (int i = 0; i < 2 * n - 1; i++) {
-        result[i] = fa[i];
-    }
-    
-    delete[] fa;
-    delete[] fb;
-}
 
 
 int a[300000], b[300000], ab[300000];
@@ -1098,10 +705,16 @@ int main(int argc, char *argv[])
         fRead(a, b, &n_, &p_, i);
         auto Start = std::chrono::high_resolution_clock::now();
         // TODO : 将 poly_multiply 函数替换成你写的 ntt
-         // NTT_multiply(a, b, ab, n_, p_);
+        // poly_multiply(a, b, ab, n_, p_);
+        // ntt 初始版本
+        // NTT_multiply(a, b, ab, n_, p_);
+        // ntt使用蒙哥马利模乘的版本
         // NTT_multiply_Montgomery(a, b, ab, n_, p_);
+        // ntt使用基4 - 蒙哥马利模乘的版本
         // NTT_multiply_base4(a, b, ab, n_, p_);
+        
         // NTT_multiply_base4_NEON(a, b, ab, n_, p_);
+        // ntt 使用基4 - 蒙哥马利域   的版本
         NTT_multiply_base4_Montgomery(a, b, ab, n_, p_);
         auto End = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double,std::ratio<1,1000>>elapsed = End - Start;
