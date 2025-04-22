@@ -43,7 +43,7 @@ class Montgomery {
             }
     
             // 计算R为大于N的最小2^k
-            this->logR = 32; // 使用32位整数
+            this->logR = 31; // 使用32位整数
             this->R = (1ULL << logR); // R = 2^32
             if (R <= N) {
                 throw std::runtime_error("R 必须大于 N");
@@ -88,22 +88,6 @@ class Montgomery {
             return REDC(REDC(T));
         }
     
-        // 辅助函数：快速模幂（利用Montgomery乘法）
-        uint64_t pow(uint64_t x, uint64_t power) const {
-            // 转换为Montgomery形式
-            uint64_t xR = REDC(x * R2);
-            uint64_t resultR = REDC(1 * R2); // 1 in Montgomery form
-    
-            while (power > 0) {
-                if (power & 1) {
-                    resultR = REDC(resultR * xR);
-                }
-                xR = REDC(xR * xR);
-                power >>= 1;
-            }
-    
-            // 转换回普通形式
-            return REDC(resultR);
-        }
+        
 };
   

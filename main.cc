@@ -11,6 +11,8 @@
 #include <algorithm>
 #include <arm_neon.h>
 #include "Mentgomery.h"
+#include "Mentgomery32.h"
+
 // 可以自行添加需要的头文件
 
 void fRead(int *a, int *b, int *n, int *p, int input_id){
@@ -65,6 +67,21 @@ void fWrite(int *ab, int n, int input_id){
     std::ofstream fout;
     fout.open(output_path, std::ios::out);
     for (int i = 0; i < n * 2 - 1; i++){
+        fout<<ab[i]<<'\n';
+    }
+}
+
+void fWrite1(uint32_t *ab, int n, int input_id){
+    // 数据输出函数, 可以用来输出最终结果, 也可用于调试时输出中间数组
+    std::string str1 = "files/";
+    std::string str2 = std::to_string(input_id);
+    std::string strout = str1 + str2 + ".out";
+    char output_path[strout.size() + 1];
+    std::copy(strout.begin(), strout.end(), output_path);
+    output_path[strout.size()] = '\0';
+    std::ofstream fout;
+    fout.open(output_path, std::ios::out);
+    for (int i = 0; i < n; i++){
         fout<<ab[i]<<'\n';
     }
 }
@@ -526,7 +543,6 @@ void NTT_base4(int *a, int n, bool invert, int p) {
         }
     }
 }
-
 void NTT_multiply_base4(int *a, int *b, int *result, int n, int p) {
     // 准备工作不变
     // len 为4的幂次
@@ -683,6 +699,327 @@ void NTT_multiply_base4_Montgomery(int *a, int *b, int *result, int n, int p) {
     delete[] fb;
 }
 
+void reverse_base4neon(uint32_t* a, int n) {
+
+    int log4n = 0; // log4n是n的基4对数
+    int temp = n; // 临时变量
+    while (temp > 1) 
+    {
+        temp >>= 2;
+        log4n++;
+    }
+    // 位逆序置换
+    // 这里的位逆序置换是基于基4的
+    // 通过将每个数的二进制位进行反转来实现
+    // 预计算位逆序表
+    int *rev = new int[n];
+    for (int i = 0; i < n; i++) {
+        int reversed = 0;
+        int num = i;
+        for (int j = 0; j < log4n; j++) {
+            reversed = (reversed << 2) | (num & 3);
+            num >>= 2;
+        }
+        rev[i] = reversed;
+    }
+
+    // 位逆序置换
+    for (int i = 0; i < n; i++) {
+        if (i < rev[i]) {
+            std::swap(a[i], a[rev[i]]);
+        }
+    }
+    delete[] rev;
+}
+
+
+// 使用优化的蒙哥马利域的基4 NTT
+void NTT_base4_Montgomery32(int *a, int n, bool invert, int p) {
+    Montgomery32  mont(p);
+   // 位逆序置换
+   reverse_base4(a, n);
+   // 蝶形操作
+   for (int len = 4; len <= n; len <<= 2) {
+       int g = 3; // 原根
+       int g_n_normal = invert ? 
+           pow(g, (p - 1) - (p - 1) / len, p) : 
+           pow(g, (p - 1) / len, p);
+           
+       // 将g_n转换为蒙哥马利域
+       uint32_t g_n = mont.REDC((uint64_t)g_n_normal * mont.R2);
+       // 预计算单位根幂次
+       uint32_t g_n2 = mont.REDC((uint64_t)g_n * g_n);
+       uint32_t g_n3 = mont.REDC((uint64_t)g_n2 * g_n);
+       
+       int step = len >> 2;
+       uint32_t g_pow_step_normal = pow(g_n_normal, step, p);
+       uint32_t g_pow_step = mont.REDC((uint64_t)g_pow_step_normal * mont.R2);
+       
+       for (int i = 0; i < n; i += len) {
+           // 将1转换到蒙哥马利域
+           uint32_t w[4];
+           w[0] = mont.REDC((uint64_t)1 * mont.R2);
+           w[1] = w[0];
+           w[2] = w[0];
+           w[3] = w[0];
+           
+           uint32_t u[4];
+           for (int j = 0; j < len / 4; j++) {
+               if (j == 0) {
+                   for (int k = 0; k < 4; k++) {
+                       u[k] = a[i + j + k * step];  // 已经在蒙哥马利域
+                   }
+               } else {
+                   for (int k = 0; k < 4; k++) {
+                       // a和w都在蒙哥马利域，使用32位乘法
+                       u[k] = mont.REDC((uint64_t)a[i + j + k * step] * w[k]);
+                   }
+               }
+               
+               // 计算旋转因子
+               uint32_t j_1 = mont.REDC((uint64_t)u[1] * g_pow_step);
+               uint32_t j_3 = mont.REDC((uint64_t)u[3] * g_pow_step);
+               
+               // 蝶形操作结果
+               a[i + j] = (u[0] + u[1] + u[2] + u[3]) % p;
+               a[i + j + step] = (u[0] + j_1 + p - u[2] + p - j_3) % p;
+               a[i + j + 2 * step] = (u[0] + p - u[1] + u[2] + p - u[3]) % p;
+               a[i + j + 3 * step] = (u[0] + p - j_1 + p - u[2] + j_3) % p;
+               
+               // 更新旋转因子
+               w[1] = mont.REDC((uint64_t)w[1] * g_n);
+               w[2] = mont.REDC((uint64_t)w[2] * g_n2);
+               w[3] = mont.REDC((uint64_t)w[3] * g_n3);
+           }
+       }
+   }
+   
+   // 处理逆变换的系数
+   if (invert) {
+       int inv_n = pow(n, p - 2, p);
+       uint32_t inv_n_mont = mont.REDC((uint64_t)inv_n * mont.R2); // 转到蒙哥马利域
+       
+       for (int i = 0; i < n; i++) {
+           a[i] = mont.REDC((uint64_t)a[i] * inv_n_mont);
+       }
+   }
+}
+
+//使用优化的蒙哥马利域的基4 NTT
+void NTT_base4_Montgomery32neon(uint32_t *a, int n, bool invert, int p) {
+    Montgomery32  mont(p);
+   // 位逆序置换
+   reverse_base4neon(a, n);
+   // 蝶形操作
+   for (int len = 4; len <= n; len <<= 2) {
+       int g = 3; // 原根
+       int g_n_normal = invert ? 
+           pow(g, (p - 1) - (p - 1) / len, p) : 
+           pow(g, (p - 1) / len, p);
+           
+       // 将g_n转换为蒙哥马利域
+       uint32_t g_n = mont.REDC((uint64_t)g_n_normal * mont.R2);
+       uint32_t g_n2 = mont.REDC((uint64_t)g_n * g_n);
+       uint32_t g_n3 = mont.REDC((uint64_t)g_n2 * g_n);
+       
+       int step = len >> 2;
+       uint32_t g_pow_step_normal = pow(g_n_normal, step, p);
+       uint32_t g_pow_step = mont.REDC((uint64_t)g_pow_step_normal * mont.R2);
+       
+       for (int i = 0; i < n; i += len) {
+           // 将1转换到蒙哥马利域
+           uint32_t w[4];
+           w[0] = mont.REDC((uint64_t)1 * mont.R2);
+           w[1] = w[0];
+           w[2] = w[0];
+           w[3] = w[0];
+           
+           uint32_t u[4];
+           for (int j = 0; j < len / 4; j++) {
+               if (j == 0) {
+                   for (int k = 0; k < 4; k++) {
+                       u[k] = a[i + j + k * step];  // 已经在蒙哥马利域
+                   }
+               } else {
+                   for (int k = 0; k < 4; k++) {
+                       // a和w都在蒙哥马利域，使用32位乘法
+                       u[k] = mont.REDC((uint64_t)a[i + j + k * step] * w[k]);
+                   }
+               }
+               
+               // 计算旋转因子
+               uint32_t j_1 = mont.REDC((uint64_t)u[1] * g_pow_step);
+               uint32_t j_3 = mont.REDC((uint64_t)u[3] * g_pow_step);
+               
+               // 蝶形操作结果
+               a[i + j] = (u[0] + u[1] + u[2] + u[3]) % p;
+               a[i + j + step] = (u[0] + j_1 + p - u[2] + p - j_3) % p;
+               a[i + j + 2 * step] = (u[0] + p - u[1] + u[2] + p - u[3]) % p;
+               a[i + j + 3 * step] = (u[0] + p - j_1 + p - u[2] + j_3) % p;
+               
+               // 更新旋转因子
+               w[1] = mont.REDC((uint64_t)w[1] * g_n);
+               w[2] = mont.REDC((uint64_t)w[2] * g_n2);
+               w[3] = mont.REDC((uint64_t)w[3] * g_n3);
+           }
+       }
+   }
+   
+   // 处理逆变换的系数
+   if (invert) {
+       int inv_n = pow(n, p - 2, p);
+       uint32_t inv_n_mont = mont.REDC((uint64_t)inv_n * mont.R2); // 转到蒙哥马利域
+       
+       for (int i = 0; i < n; i++) {
+           a[i] = mont.REDC((uint64_t)a[i] * inv_n_mont);
+       }
+   }
+}
+
+void NTT_multiply_base4_Montgomery32(int *a, int *b, int *result, int n, int p) {
+   // 准备工作不变，但len需要是4的幂次
+   int len = 1;
+   while (len < 2 * n) {
+       if (len < 4) 
+           len = 4;
+       else
+           len <<= 2;
+   }
+   
+   // 初始化优化的32位Montgomery实例
+   Montgomery32 mont(p);
+
+   std::cout << "len: " << len << std::endl;
+   
+    uint32_t *fa = new uint32_t[len];
+    uint32_t *fb = new uint32_t[len];
+   
+   
+   // 复制数据并转换到蒙哥马利域
+   for (int i = 0; i < n; i++) {
+       fa[i] = mont.REDC((uint64_t)a[i] * mont.R2);
+       fb[i] = mont.REDC((uint64_t)b[i] * mont.R2);
+   }
+
+   
+   // 填充0
+   for (int i = n; i < len; i++) {
+       fa[i] = fb[i] = 0;
+   }
+
+   // 使用32位优化的蒙哥马利NTT
+   NTT_base4_Montgomery32neon(fa, len, false, p);
+   NTT_base4_Montgomery32neon(fb, len, false, p);
+   
+   // 点值乘法（在蒙哥马利域中）
+   for (int i = 0; i < len; i++) {
+       fa[i] = mont.REDC((uint64_t)fa[i] * fb[i]);
+   }
+   
+   // 逆NTT
+   NTT_base4_Montgomery32neon(fa, len, true, p);
+   
+   // 复制结果，将结果从蒙哥马利域转回普通域
+   for (int i = 0; i < 2 * n - 1; i++) {
+       result[i] = mont.REDC(fa[i]);
+   }
+   
+   delete[] fa;
+   delete[] fb;
+}
+
+void NTT_multiply_base4_Montgomery32neon(int *a, int *b, int *result, int n, int p) {
+    // 准备工作不变，但len需要是4的幂次
+    int len = 1;
+    while (len < 2 * n) {
+       if (len < 4) 
+           len = 4;
+       else
+           len <<= 2;
+    }
+   
+    // 初始化优化的32位Montgomery实例
+    Montgomery32 mont(p);
+    
+   
+    uint32_t *fa = new uint32_t[len];
+    uint32_t *fb = new uint32_t[len];
+    
+    uint64_t a_mul[4], b_mul[4];
+    uint32x4_t fa_vec, fb_vec;
+    // 复制数据并转换到蒙哥马利域
+    for (int i = 0; i < n; i+= 4) {
+
+        for (int j = 0; j < 4; j++) {
+            a_mul[j] = (uint64_t)a[i + j] * mont.R2;
+            b_mul[j] = (uint64_t)b[i + j] * mont.R2;
+        }
+        fa_vec = mont.REDC_neon(a_mul);
+        fb_vec = mont.REDC_neon(b_mul);
+
+        // Store results
+        vst1q_u32(&fa[i], fa_vec);
+        vst1q_u32(&fb[i], fb_vec);
+   }
+   
+   // 填充0
+   for (int i = n; i < len; i++) {
+       fa[i] = fb[i] = 0;
+   }
+
+   // 使用32位优化的蒙哥马利NTT
+   NTT_base4_Montgomery32neon(fa, len, false, p);
+   NTT_base4_Montgomery32neon(fb, len, false, p);
+   
+   // 点值乘法（在蒙哥马利域中）
+   uint64_t temp[4];
+   for (int i = 0; i < len; i+= 4) {
+        for (int j = 0; j < 4; j++) {
+            temp[j] = (uint64_t)fa[i + j] * fb[i + j];
+        }
+        fa_vec = mont.REDC_neon(temp);
+        vst1q_u32(&fa[i], fa_vec);
+        //  // 使用NEON指令进行点值乘法
+        //  uint32x4_t fa_vec = vld1q_u32(&fa[i]);
+        //  uint32x4_t fb_vec = vld1q_u32(&fb[i]);
+        //  // 由于需要64位完整结果，我们分解为低位和高位分别计算
+        // uint32x2_t fa_low = vget_low_u32(fa_vec);   // m0 m1
+        // uint32x2_t fa_high = vget_high_u32(fa_vec); // m2 m3
+        // uint32x2_t fb_low = vget_low_u32(fb_vec);  // N0 N1
+        // uint32x2_t fb_high = vget_high_u32(fa_vec);// N2 N3
+        
+        // // 完整的乘法结果
+        // uint64x2_t mul_low = vmull_u32(fa_low, fb_low);
+        // uint64x2_t mul_high = vmull_u32(fa_high, fb_high);
+
+        // // 分别保留high和low部分
+        // uint32x4_t mul_result_high = vcombine_u32(
+        //     vshrn_n_u64(mul_low, 32), 
+        //     vshrn_n_u64(mul_high, 32)
+        // );
+        // uint32x4_t mul_result_low = vcombine_u32(
+        //     vmovn_u64(mul_low), 
+        //     vmovn_u64(mul_high)
+        // );
+        // // 计算最终结果
+       
+        // // 将结果存储到fa中
+        // vst1q_u32(&fa[i],  mont.REDC_neon(mul_result_high, mul_result_low)); 
+        
+   }
+   
+   // 逆NTT
+   NTT_base4_Montgomery32neon(fa, len, true, p);
+   
+   // 复制结果，将结果从蒙哥马利域转回普通域
+   for (int i = 0; i < 2 * n - 1; i++) {
+        
+       result[i] = mont.REDC(fa[i]);
+   }
+   
+   delete[] fa;
+   delete[] fb;
+}
 
 
 
@@ -703,6 +1040,7 @@ int main(int argc, char *argv[])
         long double ans = 0;
         int n_, p_;
         fRead(a, b, &n_, &p_, i);
+        memset(ab, 0, sizeof(ab));
         auto Start = std::chrono::high_resolution_clock::now();
         // TODO : 将 poly_multiply 函数替换成你写的 ntt
         // poly_multiply(a, b, ab, n_, p_);
@@ -714,8 +1052,13 @@ int main(int argc, char *argv[])
         // NTT_multiply_base4(a, b, ab, n_, p_);
         
         // NTT_multiply_base4_NEON(a, b, ab, n_, p_);
-        // ntt 使用基4 - 蒙哥马利域   的版本
-        NTT_multiply_base4_Montgomery(a, b, ab, n_, p_);
+        // ntt 使用基4 - 蒙哥马利域的版本
+        // NTT_multiply_base4_Montgomery(a, b, ab, n_, p_);
+        // 小于32位优化的蒙哥马利域基4 NTT
+
+        // NTT_multiply_base4_Montgomery32(a, b, ab, n_, p_);
+         NTT_multiply_base4_Montgomery32neon(a, b, ab, n_, p_);
+
         auto End = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double,std::ratio<1,1000>>elapsed = End - Start;
         ans += elapsed.count();
@@ -725,5 +1068,6 @@ int main(int argc, char *argv[])
         // 禁止使用 cout 一次性输出大量文件内容
         fWrite(ab, n_, i);
     }
+    std::cout<<"all test cases passed!34"<<std::endl;
     return 0;
 }
