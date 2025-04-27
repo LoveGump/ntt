@@ -125,7 +125,8 @@ public:
         // 最后处理减法
         return vbslq_u32(vcgeq_u32(t, N_vec), vsubq_u32(t, N_vec), t);
     }
-private:
+
+    private:
             // 扩展欧几里得算法求模逆元
     static int64_t extendedGCD(int64_t a, int64_t b, int64_t& x, int64_t& y) {
         if (a == 0) {

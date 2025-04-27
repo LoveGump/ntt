@@ -96,16 +96,7 @@ void poly_multiply(int *a, int *b, int *ab, int n, int p){
 
 
 // 1. 位逆序置换函数
-void reverse(int *rev, int n, int bit) {
-    // rev 是存储反转后的索引数组, n 是数组长度，bit 是二进制位数
-    // i 的反转 = (i/2) 的反转去掉最高位后，再补上 i 的最低位作为最高位。
-    rev[0] = 0;
-    for (int i = 0; i < n; i++) {
-        // 二进制反转, rev[i] = 0;
-        rev[i] = (rev[i >> 1] >> 1) | ((i & 1) << (bit - 1));
-    }
 
-}
 // 快速幂
 int pow(int base, int exp, int mod) 
 {
@@ -146,7 +137,6 @@ void DFT(Comp *a, int n, int rev) {
             a[i / 2] = tmp[i];
     }
     // 分别对偶数和奇数部分进行递归 DFT
-    // g是偶数，h是奇数
     DFT(a, n / 2, rev);
     DFT(a + n / 2, n / 2, rev);
    
@@ -162,19 +152,29 @@ void DFT(Comp *a, int n, int rev) {
 
 // 迭代FFT
 // on = 1 表示正向变换，on = -1 表示逆向变换
+void reverse_fft(Comp *a, int n, int bit) {
+    // a 是输入数组，n 是数组长度，bit 是二进制位数
+    int *rev = new int[n];
+    rev[0] = 0;
+    for (int i = 0; i < n; i++) {
+        // 二进制反转, rev[i] = 0;
+        rev[i] = (rev[i >> 1] >> 1) | ((i & 1) << (bit - 1));
+    }
+    for (int i = 0; i < n; i++) {
+        if (i < rev[i]) {
+            std::swap(a[i], a[rev[i]]); // 位逆序置换
+        }
+    }
+    // 位逆序置换
+}
 void FFT_Iteration(Comp *a, int n, int on){
     // 迭代FFT实现
     // 计算二进制位数
     int bit = 0;
     while ((1 << bit) < n) bit++;
 
-    int *rev = new int[n];
-    reverse(rev, n, bit); // 20 是二进制位数，n <= 2^20
-    for(int i =0 ; i< n; i++){
-        if(i < rev[i]){
-            std::swap(a[i], a[rev[i]]); // 位逆序置换
-        }
-    }
+    reverse_fft(a, n, bit); // 20 是二进制位数，n <= 2^20
+
     // 蝶形操作
     for(int len = 2; len <= n; len <<= 1){
         // len 是当前的蝶形长度，len = 2^k
@@ -199,6 +199,7 @@ void FFT_Iteration(Comp *a, int n, int on){
         }
     }
 
+    //逆向fft
     if (on == -1) {
         for (int i = 0; i < n; i++) {
             a[i] /= n;  // 逆变换结果除以 n
@@ -246,24 +247,36 @@ void FFT_multiply(int *a, int *b, int *result, int n, int p){
 }
 
 
+
+
 // NTT函数（数论变换）
 // 迭代NTT实现，模仿FFT的实现 将 w 替换为原根 g
 // a 是输入数组，n 是数组长度，invert 是是否进行逆变换
 // p 是模数，g 是原根
+void reverse(int *a, int n, int bit) {
+    // a 是输入数组，n 是数组长度，bit 是二进制位数
+    int *rev = new int[n];
+    // i 的反转 = (i/2) 的反转去掉最高位后，再补上 i 的最低位作为最高位。
+    rev[0] = 0;
+    for (int i = 0; i < n; i++) {
+        // 二进制反转, rev[i] = 0;
+        rev[i] = (rev[i >> 1] >> 1) | ((i & 1) << (bit - 1));
+    }
+    for (int i = 0; i < n; i++) {
+        if (i < rev[i]) {
+            std::swap(a[i], a[rev[i]]); // 位逆序置换
+        }
+    }
+
+}
 void NTT(int *a, int n, bool invert, int p, int g) {
     // 计算二进制位数
     int bit = 0;
     while ((1 << bit) < n) bit++;
     
     // 位逆序置换
-    int *rev = new int[n];
-    reverse(rev, n, bit);
-    for (int i = 0; i < n; i++) {
-        if (i < rev[i]) {
-            std::swap(a[i], a[rev[i]]);
-        }
-    }
-    
+    reverse(a, n, bit);
+
     // 蝶形操作
     for (int len = 2; len <= n; len <<= 1) {
         // len 是当前的蝶形长度，len = 2^k
@@ -297,8 +310,6 @@ void NTT(int *a, int n, bool invert, int p, int g) {
             a[i] = (1LL * a[i] * inv_n) % p;
         }
     }
-    
-    delete[] rev;
 }
 // 使用NTT的多项式乘法
 void NTT_multiply(int *a, int *b, int *result, int n, int p) {
@@ -344,7 +355,8 @@ void NTT_multiply(int *a, int *b, int *result, int n, int p) {
 }
 
 
-void NTT_Montgomery(int *a, int n, bool invert, int p) {
+
+void NTT_Montgomery(int *a, int n, bool invert, int p, int g = 3) {
     // 创建Montgomery实例
     Montgomery mont(p);
     
@@ -353,20 +365,12 @@ void NTT_Montgomery(int *a, int n, bool invert, int p) {
     while ((1 << bit) < n) bit++;
     
     // 位逆序置换(不变)
-    int *rev = new int[n];
-    reverse(rev, n, bit);
-    for (int i = 0; i < n; i++) {
-        if (i < rev[i]) {
-            std::swap(a[i], a[rev[i]]);
-        }
-    }
+
+    reverse(a, n, bit);
     
     // 蝶形操作
     for (int len = 2; len <= n; len <<= 1) {
-        // 使用Montgomery计算单位根
-        int g = 3; // 原根
 
-        //g_n^1
         int g_n = invert ? 
             pow(g, (p - 1) - (p - 1) / len, p) : 
             pow(g, (p - 1) / len, p);
@@ -397,8 +401,6 @@ void NTT_Montgomery(int *a, int n, bool invert, int p) {
             a[i] = mont.multiply(a[i], inv_n);
         }
     }
-    
-    delete[] rev;
 }
 
 void NTT_multiply_Montgomery(int *a, int *b, int *result, int n, int p) {
@@ -416,7 +418,6 @@ void NTT_multiply_Montgomery(int *a, int *b, int *result, int n, int p) {
     for (int i = n; i < len; i++) {
         fa[i] = fb[i] = 0;
     }
-    
     // 使用Montgomery优化的NTT
     NTT_Montgomery(fa, len, false, p);
     NTT_Montgomery(fb, len, false, p);
@@ -440,27 +441,16 @@ void NTT_multiply_Montgomery(int *a, int *b, int *result, int n, int p) {
 }
 
 
-void NTT_Montgomerybase2(int *a, int n, bool invert, int p) {
-    // 创建Montgomery实例
-    Montgomery32 mont(p);
+void NTT_Montgomerybase2(int *a, int n, bool invert, int p,Montgomery32 mont, int g = 3) {
+
     
     // 计算二进制位数
     int bit = 0;
     while ((1 << bit) < n) bit++;
-    
     // 位逆序置换(不变)
-    int *rev = new int[n];
-    reverse(rev, n, bit);
-    for (int i = 0; i < n; i++) {
-        if (i < rev[i]) {
-            std::swap(a[i], a[rev[i]]);
-        }
-    }
-    
+    reverse(a, n, bit);
     // 蝶形操作
     for (int len = 2; len <= n; len <<= 1) {
-        // 使用Montgomery计算单位根
-        int g = 3; // 原根
 
         //g_n^1
         int g_n_noamal = invert ? 
@@ -497,8 +487,6 @@ void NTT_Montgomerybase2(int *a, int n, bool invert, int p) {
             a[i] = mont.REDC( (uint64_t )a[i]* inv_n_mont);
         }
     }
-    
-    delete[] rev;
 }
 
 void NTT_multiply_Montgomerybase2(int *a, int *b, int *result, int n, int p) {
@@ -521,15 +509,15 @@ void NTT_multiply_Montgomerybase2(int *a, int *b, int *result, int n, int p) {
     }
     
     // 使用Montgomery优化的NTT
-    NTT_Montgomerybase2(fa, len, false, p);
-    NTT_Montgomerybase2(fb, len, false, p);
+    NTT_Montgomerybase2(fa, len, false, p,mont);
+    NTT_Montgomerybase2(fb, len, false, p,mont);
     
     for (int i = 0; i < len; i++) {
         fa[i] = mont.REDC((uint64_t)fa[i] * fb[i]);
     }
     
     // 逆NTT
-    NTT_Montgomerybase2(fa, len, true, p);
+    NTT_Montgomerybase2(fa, len, true, p,mont);
     
     // 复制结果
     for (int i = 0; i < 2 * n - 1; i++) {
@@ -554,16 +542,13 @@ void reverse_base4(int* a, int n) {
         temp >>= 2;
         log4n++;
     }
-    // 位逆序置换
-    // 这里的位逆序置换是基于基4的
-    // 通过将每个数的二进制位进行反转来实现
-    // 预计算位逆序表
+    // 计算n的基4对数
     int *rev = new int[n];
     for (int i = 0; i < n; i++) {
         int reversed = 0;
         int num = i;
         for (int j = 0; j < log4n; j++) {
-            reversed = (reversed << 2) | (num & 3);
+            reversed = (reversed << 2) | (num & 3);// 每次取最低两位并左移
             num >>= 2;
         }
         rev[i] = reversed;
@@ -578,7 +563,115 @@ void reverse_base4(int* a, int n) {
     delete[] rev;
 }
 
-void NTT_base4(int *a, int n, bool invert, int p) {
+
+// ------------------------------------------------------------------------------------
+
+// 基4 NTT/INTT核心函数
+void NTT_base4_naive(int* a, int n, bool invert, int p, int g = 3) {
+    reverse_base4(a, n);
+    
+    // 蝶形操作
+    for (int len = 4; len <= n; len <<= 2) {
+        // len 是当前的蝶形长度，len = 4^k
+        // wlen 是当前的单位根，wlen = g^(p-1)/len
+        // 计算单位根，原根为g，G^((p-1)/len)
+        // 如果invert为true，则单位根为g^((p-1)/len) 的逆元
+        // 使用Montgomery计算单位根
+        // g_n^1
+        int g_n = invert ? 
+            pow(g, (p - 1) - (p - 1) / len, p) : 
+            pow(g, (p - 1) / len, p);
+
+         // 预计算单位根幂
+        uint64_t g_n2 =(1LL * g_n * g_n )% p;
+        uint64_t g_n3 = (1LL * g_n2 * g_n )% p;
+
+        int step = len >> 2;
+        uint64_t g_pow_step = pow(g_n, step, p);
+        
+        for (int i = 0; i < n; i += len) {
+            // 处理每个蝴蝶形单元
+            // 这里的len是4的幂次
+
+            uint64_t w[4] = {1, 1, 1, 1}; // 当前单位根幂次
+
+            // 当前单位根幂次
+            uint64_t u[4];
+            for (int j = 0; j <  len / 4 ; j++) {
+                if(j == 0){
+                    for(int k = 0; k < 4; k++){
+                        u[k] =  a[i + j + k * step];
+                    }
+                }else{
+                    for(int k = 0; k < 4; k++){
+                        u[k] =  1LL * a[i + j + k * step] * w[k] % p;
+                    }
+                }
+                uint64_t j_1 =1LL * u[1] * g_pow_step % p;
+                uint64_t j_3 =1LL * u[3] * g_pow_step % p;
+
+                a[i + j]= (u[0] + u[1] + u[2] + u[3] ) % p;
+                a[i + j + step] = (u[0] + j_1 + p - u[2] + p - j_3) % p;
+                a[i + j + 2 * step] = (u[0] + p - u[1] + u[2] + p - u[3]) % p;
+                a[i + j + 3 * step]= (u[0] + p - j_1 + p - u[2] + j_3) % p;
+                w[1] =1LL * w[1] * g_n % p;
+                w[2] = 1LL * w[2] * g_n2 % p;
+                w[3] = 1LL * w[3] * g_n3 % p;
+            }
+        }
+    }
+    // 处理逆变换的系数
+    if (invert) {
+        int inv_n = pow(n, p - 2, p);
+        for (int i = 0; i < n; i++) {
+            a[i] = 1LL * a[i] * inv_n % p;
+        }
+    }
+}
+
+// 基4多项式乘法
+void NTT_multiply_base4_Naive(int* a, int* b, int* result, int n, int p) {
+       // 准备工作不变
+    // len 为4的幂次
+    int len = 1;
+    while (len < 2 * n) len <<= 2;
+    
+    int *fa = new int[len];
+    int *fb = new int[len];
+    
+    for (int i = 0; i < n; i++) {
+        fa[i] = a[i];
+        fb[i] = b[i];
+    }
+    for (int i = n; i < len; i++) {
+        fa[i] = fb[i] = 0;
+    }
+    
+    // 使用基4 NTT
+    NTT_base4_naive(fa, len, false, p);
+    NTT_base4_naive(fb, len, false, p);
+    
+
+    for (int i = 0; i < len; i++) {
+        fa[i] = (1LL * fa[i] * fb[i]) % p;
+    }
+    
+    // 逆NTT
+    NTT_base4_naive(fa, len, true, p);
+    
+    // 复制结果
+    for (int i = 0; i < 2 * n - 1; i++) {
+        result[i] = fa[i];
+    }
+    
+    delete[] fa;
+    delete[] fb;
+}
+
+// ------------------------------------------------------------------------------------
+
+
+void NTT_base4_m(int *a, int n, bool invert, int p, int g = 3) {
     // n 是数组长度，invert 是是否进行逆变换
     Montgomery mont(p);
     // 计算二进制位数
@@ -592,7 +685,6 @@ void NTT_base4(int *a, int n, bool invert, int p) {
         // 计算单位根，原根为g，G^((p-1)/len)
         // 如果invert为true，则单位根为g^((p-1)/len) 的逆元
         // 使用Montgomery计算单位根
-        int g = 3; // 原根
         // g_n^1
         int g_n = invert ? 
             pow(g, (p - 1) - (p - 1) / len, p) : 
@@ -645,7 +737,7 @@ void NTT_base4(int *a, int n, bool invert, int p) {
         }
     }
 }
-void NTT_multiply_base4(int *a, int *b, int *result, int n, int p) {
+void NTT_multiply_base4_m(int *a, int *b, int *result, int n, int p) {
     // 准备工作不变
     // len 为4的幂次
     int len = 1;
@@ -663,8 +755,8 @@ void NTT_multiply_base4(int *a, int *b, int *result, int n, int p) {
     }
     
     // 使用基4 NTT
-    NTT_base4(fa, len, false, p);
-    NTT_base4(fb, len, false, p);
+    NTT_base4_m(fa, len, false, p);
+    NTT_base4_m(fb, len, false, p);
     
     // 点值乘法也使用Montgomery优化
     Montgomery mont(p);
@@ -673,7 +765,7 @@ void NTT_multiply_base4(int *a, int *b, int *result, int n, int p) {
     }
     
     // 逆NTT
-    NTT_base4(fa, len, true, p);
+    NTT_base4_m(fa, len, true, p);
     
     // 复制结果
     for (int i = 0; i < 2 * n - 1; i++) {
@@ -683,16 +775,15 @@ void NTT_multiply_base4(int *a, int *b, int *result, int n, int p) {
     delete[] fa;
     delete[] fb;
 }
+// ------------------------------------------------------------------------------------
 
 // 使用蒙哥马利域的基4 NTT
-void NTT_base4_Montgomery(int *a, int n, bool invert, int p) {
-    // 创建Montgomery实例
+void NTT_base4_Montgomery_domain(int *a, int n, bool invert, int p,int g = 3) {
     Montgomery mont(p);
     // 位逆序置换
     reverse_base4(a, n);
     // 蝶形操作
     for (int len = 4; len <= n; len <<= 2) {
-        int g = 3; // 原根
         int g_n_normal = invert ? 
             pow(g, (p - 1) - (p - 1) / len, p) : 
             pow(g, (p - 1) / len, p);
@@ -756,7 +847,7 @@ void NTT_base4_Montgomery(int *a, int n, bool invert, int p) {
     }
 
 }
-void NTT_multiply_base4_Montgomery(int *a, int *b, int *result, int n, int p) {
+void NTT_multiply_base4_Montgomery_domain(int *a, int *b, int *result, int n, int p) {
     // 准备工作不变，但len需要是4的幂次
     int len = 1;
     while (len < 2 * n) {
@@ -781,8 +872,8 @@ void NTT_multiply_base4_Montgomery(int *a, int *b, int *result, int n, int p) {
         fa[i] = fb[i] = 0;
     }
     // 使用蒙哥马利优化的基4 NTT
-    NTT_base4_Montgomery(fa, len, false, p);
-    NTT_base4_Montgomery(fb, len, false, p);
+    NTT_base4_Montgomery_domain(fa, len, false, p);
+    NTT_base4_Montgomery_domain(fb, len, false, p);
     
     // 点值乘法（在蒙哥马利域中）
     for (int i = 0; i < len; i++) {
@@ -790,7 +881,7 @@ void NTT_multiply_base4_Montgomery(int *a, int *b, int *result, int n, int p) {
     }
     
     // 逆NTT
-    NTT_base4_Montgomery(fa, len, true, p);
+    NTT_base4_Montgomery_domain(fa, len, true, p);
     
     // 复制结果
     // 将结果从[0, p-1]调整为适当范围
@@ -800,6 +891,10 @@ void NTT_multiply_base4_Montgomery(int *a, int *b, int *result, int n, int p) {
     delete[] fa;
     delete[] fb;
 }
+
+
+
+// ------------------------------------------------------------------------------------
 
 void reverse_base4neon(uint32_t* a, int n) {
 
@@ -908,13 +1003,13 @@ void NTT_base4_Montgomery32(int *a, int n, bool invert, int p) {
 }
 
 //使用优化的蒙哥马利域的基4 NTT
-void NTT_base4_Montgomery32neon(uint32_t *a, int n, bool invert, int p) {
+void NTT_base4_Montgomery32neon(uint32_t *a, int n, bool invert, int p, int g = 3) {
     Montgomery32  mont(p);
    // 位逆序置换
    reverse_base4neon(a, n);
    // 蝶形操作
    for (int len = 4; len <= n; len <<= 2) {
-       int g = 3; // 原根
+  
        int g_n_normal = invert ? 
            pow(g, (p - 1) - (p - 1) / len, p) : 
            pow(g, (p - 1) / len, p);
@@ -1021,58 +1116,60 @@ void NTT_base4_Montgomery32neon(uint32_t *a, int n, bool invert, int p) {
        }
    }
 }
+// ------------------------------------------------------------------------------------
+// ---------------------------------------------------------------------------------
 
-void NTT_multiply_base4_Montgomery32(int *a, int *b, int *result, int n, int p) {
-   // 准备工作不变，但len需要是4的幂次
-   int len = 1;
-   while (len < 2 * n) {
-       if (len < 4) 
-           len = 4;
-       else
-           len <<= 2;
-   }
+// void NTT_multiply_base4_Montgomery32(int *a, int *b, int *result, int n, int p) {
+//    // 准备工作不变，但len需要是4的幂次
+//    int len = 1;
+//    while (len < 2 * n) {
+//        if (len < 4) 
+//            len = 4;
+//        else
+//            len <<= 2;
+//    }
    
-   // 初始化优化的32位Montgomery实例
-   Montgomery32 mont(p);
+//    // 初始化优化的32位Montgomery实例
+//    Montgomery32 mont(p);
 
-   std::cout << "len: " << len << std::endl;
-   
-    uint32_t *fa = new uint32_t[len];
-    uint32_t *fb = new uint32_t[len];
-   
-   
-   // 复制数据并转换到蒙哥马利域
-   for (int i = 0; i < n; i++) {
-       fa[i] = mont.REDC((uint64_t)a[i] * mont.R2);
-       fb[i] = mont.REDC((uint64_t)b[i] * mont.R2);
-   }
 
    
-   // 填充0
-   for (int i = n; i < len; i++) {
-       fa[i] = fb[i] = 0;
-   }
+//     uint32_t *fa = new uint32_t[len];
+//     uint32_t *fb = new uint32_t[len];
+   
+   
+//    // 复制数据并转换到蒙哥马利域
+//    for (int i = 0; i < n; i++) {
+//        fa[i] = mont.REDC((uint64_t)a[i] * mont.R2);
+//        fb[i] = mont.REDC((uint64_t)b[i] * mont.R2);
+//    }
 
-   // 使用32位优化的蒙哥马利NTT
-   NTT_base4_Montgomery32neon(fa, len, false, p);
-   NTT_base4_Montgomery32neon(fb, len, false, p);
    
-   // 点值乘法（在蒙哥马利域中）
-   for (int i = 0; i < len; i++) {
-       fa[i] = mont.REDC((uint64_t)fa[i] * fb[i]);
-   }
+//    // 填充0
+//    for (int i = n; i < len; i++) {
+//        fa[i] = fb[i] = 0;
+//    }
+
+//    // 使用32位优化的蒙哥马利NTT
+//    NTT_base4_Montgomery32neon(fa, len, false, p);
+//    NTT_base4_Montgomery32neon(fb, len, false, p);
    
-   // 逆NTT
-   NTT_base4_Montgomery32neon(fa, len, true, p);
+//    // 点值乘法（在蒙哥马利域中）
+//    for (int i = 0; i < len; i++) {
+//        fa[i] = mont.REDC((uint64_t)fa[i] * fb[i]);
+//    }
    
-   // 复制结果，将结果从蒙哥马利域转回普通域
-   for (int i = 0; i < 2 * n - 1; i++) {
-       result[i] = mont.REDC(fa[i]);
-   }
+//    // 逆NTT
+//    NTT_base4_Montgomery32neon(fa, len, true, p);
    
-   delete[] fa;
-   delete[] fb;
-}
+//    // 复制结果，将结果从蒙哥马利域转回普通域
+//    for (int i = 0; i < 2 * n - 1; i++) {
+//        result[i] = mont.REDC(fa[i]);
+//    }
+   
+//    delete[] fa;
+//    delete[] fb;
+// }
 
 void NTT_multiply_base4_Montgomery32neon(int *a, int *b, int *result, int n, int p) {
     // 准备工作不变，但len需要是4的幂次
@@ -1190,20 +1287,25 @@ int main(int argc, char *argv[])
         auto Start = std::chrono::high_resolution_clock::now();
         // TODO : 将 poly_multiply 函数替换成你写的 ntt
         // poly_multiply(a, b, ab, n_, p_);
+        // FFT_multiply(a, b, ab, n_, p_);
         // ntt 初始版本
         // NTT_multiply(a, b, ab, n_, p_);
-        // ntt使用蒙哥马利模乘的版本
+        // ntt 使用蒙哥马利 模乘 的版本
+        // NTT_multiply_Montgomery(a, b, ab, n_, p_);
+        // ntt使用蒙哥马利 域 的版本
         // NTT_multiply_Montgomerybase2(a, b, ab, n_, p_);
+
+        // NTT_multiply_base4_(a, b, ab, n_, p_);
         // ntt使用基4 - 蒙哥马利模乘的版本
         // NTT_multiply_base4(a, b, ab, n_, p_);
-        
+        NTT_multiply_base4_m(a, b, ab, n_, p_);
         // NTT_multiply_base4_NEON(a, b, ab, n_, p_);
         // ntt 使用基4 - 蒙哥马利域的版本
         // NTT_multiply_base4_Montgomery(a, b, ab, n_, p_);
         // 小于32位优化的蒙哥马利域基4 NTT
-
+        // NTT_multiply_base4_Montgomery_domain(a, b, ab, n_, p_);
         // NTT_multiply_base4_Montgomery32(a, b, ab, n_, p_);
-         NTT_multiply_base4_Montgomery32neon(a, b, ab, n_, p_);
+        // NTT_multiply_base4_Montgomery32neon(a, b, ab, n_, p_);
 
         auto End = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double,std::ratio<1,1000>>elapsed = End - Start;

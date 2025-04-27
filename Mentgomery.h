@@ -41,7 +41,6 @@ class Montgomery {
             if (N == 0 || (N & 1) == 0) {
                 throw std::runtime_error("N 必须是正奇数");
             }
-    
             // 计算R为大于N的最小2^k
             this->logR = 31; // 使用32位整数
             this->R = (1ULL << logR); // R = 2^32
