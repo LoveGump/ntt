@@ -1,0 +1,16 @@
+# started on Mon Apr 28 20:11:34 2025
+
+
+ Performance counter stats for './ntt_perf':
+
+     1,530,223,007      cycles                                                                
+     2,456,353,245      instructions                     #    1.61  insn per cycle            
+       776,903,806      cache-references                                                      
+         4,472,559      cache-misses                     #    0.58% of all cache refs         
+
+       0.826727166 seconds time elapsed
+
+       0.548552000 seconds user
+       0.093471000 seconds sys
+
+

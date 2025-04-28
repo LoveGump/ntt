@@ -17,7 +17,7 @@
 
 void fRead(int *a, int *b, int *n, int *p, int input_id){
     // 数据输入函数
-    std::string str1 = "/nttdata/";
+    std::string str1 = "./nttdata/";
     std::string str2 = std::to_string(input_id);
     std::string strin = str1 + str2 + ".in";
     char data_path[strin.size() + 1];
@@ -36,7 +36,7 @@ void fRead(int *a, int *b, int *n, int *p, int input_id){
 
 void fCheck(int *ab, int n, int input_id){
     // 判断多项式乘法结果是否正确
-    std::string str1 = "/nttdata/";
+    std::string str1 = "./nttdata/";
     std::string str2 = std::to_string(input_id);
     std::string strout = str1 + str2 + ".out";
     char data_path[strout.size() + 1];
@@ -1295,16 +1295,14 @@ int main(int argc, char *argv[])
         // ntt使用蒙哥马利 域 的版本
         // NTT_multiply_Montgomerybase2(a, b, ab, n_, p_);
 
-        // NTT_multiply_base4_(a, b, ab, n_, p_);
-        // ntt使用基4 - 蒙哥马利模乘的版本
-        // NTT_multiply_base4(a, b, ab, n_, p_);
-        NTT_multiply_base4_m(a, b, ab, n_, p_);
-        // NTT_multiply_base4_NEON(a, b, ab, n_, p_);
-        // ntt 使用基4 - 蒙哥马利域的版本
-        // NTT_multiply_base4_Montgomery(a, b, ab, n_, p_);
-        // 小于32位优化的蒙哥马利域基4 NTT
-        // NTT_multiply_base4_Montgomery_domain(a, b, ab, n_, p_);
-        // NTT_multiply_base4_Montgomery32(a, b, ab, n_, p_);
+        // ntt 使用基4的版本
+        //  NTT_multiply_base4_Naive(a, b, ab, n_, p_);
+        // ntt 使用基4 模乘
+        // NTT_multiply_base4_m(a, b, ab, n_, p_);
+        // ntt 使用基4蒙哥马利域
+        //  NTT_multiply_base4_Montgomery_domain(a, b, ab, n_, p_);
+
+        // ntt 使用基4蒙哥马利域的neon版本
         // NTT_multiply_base4_Montgomery32neon(a, b, ab, n_, p_);
 
         auto End = std::chrono::high_resolution_clock::now();
