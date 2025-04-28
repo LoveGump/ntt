@@ -1,0 +1,66 @@
+算法性能比较
+================
+
+## fft
+ Performance counter stats for './ntt_perf':
+
+       828,790,512      cycles                                                                
+     2,145,335,751      instructions                     #    2.59  insn per cycle            
+       653,419,554      cache-references                                                      
+         4,556,495      cache-misses                     #    0.70% of all cache refs         
+
+## ntt_basic
+ Performance counter stats for './ntt_perf':
+
+     1,537,737,040      cycles                                                                
+     2,460,355,655      instructions                     #    1.60  insn per cycle            
+       778,103,119      cache-references                                                      
+         4,519,387      cache-misses                     #    0.58% of all cache refs         
+
+## ntt_montgomery
+ Performance counter stats for './ntt_perf':
+
+     1,666,992,693      cycles                                                                
+     4,017,000,655      instructions                     #    2.41  insn per cycle            
+       784,940,644      cache-references                                                      
+         4,513,700      cache-misses                     #    0.58% of all cache refs         
+
+## ntt_montgomery_domain
+ Performance counter stats for './ntt_perf':
+
+       943,518,973      cycles                                                                
+     2,745,835,065      instructions                     #    2.91  insn per cycle            
+       773,850,837      cache-references                                                      
+         4,149,671      cache-misses                     #    0.54% of all cache refs         
+
+## ntt_radix4
+ Performance counter stats for './ntt_perf':
+
+     1,419,046,764      cycles                                                                
+     2,745,075,554      instructions                     #    1.93  insn per cycle            
+       827,474,500      cache-references                                                      
+         4,330,212      cache-misses                     #    0.52% of all cache refs         
+
+## ntt_radix4_m
+ Performance counter stats for './ntt_perf':
+
+     1,553,405,521      cycles                                                                
+     4,699,470,333      instructions                     #    3.03  insn per cycle            
+       866,261,695      cache-references                                                      
+         4,545,444      cache-misses                     #    0.52% of all cache refs         
+
+## ntt_radix4_montgomery
+ Performance counter stats for './ntt_perf':
+
+       931,404,251      cycles                                                                
+     3,144,917,573      instructions                     #    3.38  insn per cycle            
+       841,830,183      cache-references                                                      
+         4,037,551      cache-misses                     #    0.48% of all cache refs         
+
+## ntt_radix4_montgomery_neon
+ Performance counter stats for './ntt_perf':
+
+       875,120,406      cycles                                                                
+     2,781,485,192      instructions                     #    3.18  insn per cycle            
+       765,251,542      cache-references                                                      
+         4,103,762      cache-misses                     #    0.54% of all cache refs         

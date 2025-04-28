@@ -1,0 +1,1882 @@
+# To display the perf.data header info, please use --header/--header-only options.
+#
+#
+# Total Lost Samples: 0
+#
+# Samples: 67  of event 'cycles:P'
+# Event count (approx.): 1583602086
+#
+# Children      Self  Command   Shared Object        Symbol                                                                                                                                                                                                                                                                                                                           
+# ........  ........  ........  ...................  .................................................................................................................................................................................................................................................................................................................................
+#
+    99.99%     0.00%  ntt_perf  ntt_perf             [.] _start
+            |
+            ---_start
+               __libc_start_main
+               |          
+               |--98.99%--0xede0676684c4
+               |          main
+               |          |          
+               |          |--73.15%--NTT_multiply_Montgomery(int*, int*, int*, int, int)
+               |          |          NTT_Montgomery(int*, int, bool, int, int)
+               |          |          
+               |          |--13.40%--fWrite(int*, int, int)
+               |          |          |          
+               |          |          |--11.74%--std::ostream& std::ostream::_M_insert<long>(long)
+               |          |          |          |          
+               |          |          |          |--10.58%--std::ostreambuf_iterator<char, std::char_traits<char> > std::num_put<char, std::ostreambuf_iterator<char, std::char_traits<char> > >::_M_insert_int<long>(std::ostreambuf_iterator<char, std::char_traits<char> >, std::ios_base&, char, long) const
+               |          |          |          |          |          
+               |          |          |          |          |--4.32%--std::basic_filebuf<char, std::char_traits<char> >::xsputn(char const*, long)
+               |          |          |          |          |          std::__basic_file<char>::xsputn_2(char const*, long, char const*, long)
+               |          |          |          |          |          writev
+               |          |          |          |          |          el0t_64_sync
+               |          |          |          |          |          el0t_64_sync_handler
+               |          |          |          |          |          el0_svc
+               |          |          |          |          |          do_el0_svc
+               |          |          |          |          |          el0_svc_common.constprop.0
+               |          |          |          |          |          invoke_syscall
+               |          |          |          |          |          __arm64_sys_writev
+               |          |          |          |          |          do_writev
+               |          |          |          |          |          vfs_writev
+               |          |          |          |          |          do_iter_readv_writev
+               |          |          |          |          |          ext4_file_write_iter
+               |          |          |          |          |          ext4_buffered_write_iter
+               |          |          |          |          |          |          
+               |          |          |          |          |          |--3.14%--generic_perform_write
+               |          |          |          |          |          |          ext4_da_write_begin
+               |          |          |          |          |          |          __filemap_get_folio
+               |          |          |          |          |          |          filemap_alloc_folio
+               |          |          |          |          |          |          folio_alloc
+               |          |          |          |          |          |          alloc_pages
+               |          |          |          |          |          |          |          
+               |          |          |          |          |          |           --1.64%--alloc_pages_mpol
+               |          |          |          |          |          |                     __alloc_pages
+               |          |          |          |          |          |                     get_page_from_freelist
+               |          |          |          |          |          |                     __pi_clear_page
+               |          |          |          |          |          |          
+               |          |          |          |          |           --1.18%--ext4_generic_write_checks
+               |          |          |          |          |                     generic_write_checks
+               |          |          |          |          |          
+               |          |          |          |          |--1.68%--0xede0679443e0
+               |          |          |          |          |          
+               |          |          |          |          |--1.56%--std::ostreambuf_iterator<char, std::char_traits<char> > std::num_put<char, std::ostreambuf_iterator<char, std::char_traits<char> > >::_M_insert_int<long>(std::ostreambuf_iterator<char, std::char_traits<char> >, std::ios_base&, char, long) const
+               |          |          |          |          |          
+               |          |          |          |          |--1.52%--std::basic_streambuf<char, std::char_traits<char> >::xsputn(char const*, long)
+               |          |          |          |          |          memcpy@plt
+               |          |          |          |          |          
+               |          |          |          |           --1.50%--0xede0679443c0
+               |          |          |          |          
+               |          |          |           --1.16%--std::ostream& std::ostream::_M_insert<long>(long)
+               |          |          |          
+               |          |           --1.66%--std::basic_filebuf<char, std::char_traits<char> >::open(char const*, std::_Ios_Openmode)
+               |          |                     std::__basic_file<char>::open(char const*, std::_Ios_Openmode, int)
+               |          |                     0xede0676afcdc
+               |          |                     _IO_file_fopen
+               |          |                     _IO_file_open
+               |          |                     open64
+               |          |                     el0t_64_sync
+               |          |                     el0t_64_sync_handler
+               |          |                     el0_svc
+               |          |                     do_el0_svc
+               |          |                     el0_svc_common.constprop.0
+               |          |                     invoke_syscall
+               |          |                     __arm64_sys_openat
+               |          |                     do_sys_openat2
+               |          |                     do_filp_open
+               |          |                     path_openat
+               |          |                     do_open
+               |          |                     handle_truncate
+               |          |                     do_truncate
+               |          |                     notify_change
+               |          |                     ext4_setattr
+               |          |                     truncate_pagecache
+               |          |                     truncate_inode_pages_range
+               |          |                     find_lock_entries
+               |          |          
+               |          |--7.56%--fRead(int*, int*, int*, int*, int)
+               |          |          std::istream::operator>>(int&)
+               |          |          |          
+               |          |          |--5.69%--std::istreambuf_iterator<char, std::char_traits<char> > std::num_get<char, std::istreambuf_iterator<char, std::char_traits<char> > >::_M_extract_int<long>(std::istreambuf_iterator<char, std::char_traits<char> >, std::istreambuf_iterator<char, std::char_traits<char> >, std::ios_base&, std::_Ios_Iostate&, long&) const
+               |          |          |          |          
+               |          |          |          |--4.34%--std::istreambuf_iterator<char, std::char_traits<char> > std::num_get<char, std::istreambuf_iterator<char, std::char_traits<char> > >::_M_extract_int<long>(std::istreambuf_iterator<char, std::char_traits<char> >, std::istreambuf_iterator<char, std::char_traits<char> >, std::ios_base&, std::_Ios_Iostate&, long&) const
+               |          |          |          |          
+               |          |          |           --1.35%--0xede06793f863
+               |          |          |                     0xede06793f878
+               |          |          |          
+               |          |           --1.87%--std::istream::operator>>(int&)
+               |          |                     std::istream::sentry::sentry(std::istream&, bool)
+               |          |          
+               |           --4.88%--fCheck(int*, int, int)
+               |                     std::istream::operator>>(int&)
+               |                     std::istreambuf_iterator<char, std::char_traits<char> > std::num_get<char, std::istreambuf_iterator<char, std::char_traits<char> > >::_M_extract_int<long>(std::istreambuf_iterator<char, std::char_traits<char> >, std::istreambuf_iterator<char, std::char_traits<char> >, std::ios_base&, std::_Ios_Iostate&, long&) const
+               |                     std::istreambuf_iterator<char, std::char_traits<char> > std::num_get<char, std::istreambuf_iterator<char, std::char_traits<char> > >::_M_extract_int<long>(std::istreambuf_iterator<char, std::char_traits<char> >, std::istreambuf_iterator<char, std::char_traits<char> >, std::ios_base&, std::_Ios_Iostate&, long&) const
+               |          
+                --1.00%--0xede0676684c8
+                          0xede06767f30c
+                          0xede06767f1f8
+                          _exit
+                          el0t_64_sync
+                          el0t_64_sync_handler
+                          el0_svc
+                          do_el0_svc
+                          el0_svc_common.constprop.0
+                          invoke_syscall
+                          __arm64_sys_exit_group
+                          do_group_exit
+                          do_exit
+                          acct_collect
+
+    99.99%     0.00%  ntt_perf  libc.so.6            [.] __libc_start_main
+            |
+            ---__libc_start_main
+               |          
+               |--98.99%--0xede0676684c4
+               |          main
+               |          |          
+               |          |--73.15%--NTT_multiply_Montgomery(int*, int*, int*, int, int)
+               |          |          NTT_Montgomery(int*, int, bool, int, int)
+               |          |          
+               |          |--13.40%--fWrite(int*, int, int)
+               |          |          |          
+               |          |          |--11.74%--std::ostream& std::ostream::_M_insert<long>(long)
+               |          |          |          |          
+               |          |          |          |--10.58%--std::ostreambuf_iterator<char, std::char_traits<char> > std::num_put<char, std::ostreambuf_iterator<char, std::char_traits<char> > >::_M_insert_int<long>(std::ostreambuf_iterator<char, std::char_traits<char> >, std::ios_base&, char, long) const
+               |          |          |          |          |          
+               |          |          |          |          |--4.32%--std::basic_filebuf<char, std::char_traits<char> >::xsputn(char const*, long)
+               |          |          |          |          |          std::__basic_file<char>::xsputn_2(char const*, long, char const*, long)
+               |          |          |          |          |          writev
+               |          |          |          |          |          el0t_64_sync
+               |          |          |          |          |          el0t_64_sync_handler
+               |          |          |          |          |          el0_svc
+               |          |          |          |          |          do_el0_svc
+               |          |          |          |          |          el0_svc_common.constprop.0
+               |          |          |          |          |          invoke_syscall
+               |          |          |          |          |          __arm64_sys_writev
+               |          |          |          |          |          do_writev
+               |          |          |          |          |          vfs_writev
+               |          |          |          |          |          do_iter_readv_writev
+               |          |          |          |          |          ext4_file_write_iter
+               |          |          |          |          |          ext4_buffered_write_iter
+               |          |          |          |          |          |          
+               |          |          |          |          |          |--3.14%--generic_perform_write
+               |          |          |          |          |          |          ext4_da_write_begin
+               |          |          |          |          |          |          __filemap_get_folio
+               |          |          |          |          |          |          filemap_alloc_folio
+               |          |          |          |          |          |          folio_alloc
+               |          |          |          |          |          |          alloc_pages
+               |          |          |          |          |          |          |          
+               |          |          |          |          |          |           --1.64%--alloc_pages_mpol
+               |          |          |          |          |          |                     __alloc_pages
+               |          |          |          |          |          |                     get_page_from_freelist
+               |          |          |          |          |          |                     __pi_clear_page
+               |          |          |          |          |          |          
+               |          |          |          |          |           --1.18%--ext4_generic_write_checks
+               |          |          |          |          |                     generic_write_checks
+               |          |          |          |          |          
+               |          |          |          |          |--1.68%--0xede0679443e0
+               |          |          |          |          |          
+               |          |          |          |          |--1.56%--std::ostreambuf_iterator<char, std::char_traits<char> > std::num_put<char, std::ostreambuf_iterator<char, std::char_traits<char> > >::_M_insert_int<long>(std::ostreambuf_iterator<char, std::char_traits<char> >, std::ios_base&, char, long) const
+               |          |          |          |          |          
+               |          |          |          |          |--1.52%--std::basic_streambuf<char, std::char_traits<char> >::xsputn(char const*, long)
+               |          |          |          |          |          memcpy@plt
+               |          |          |          |          |          
+               |          |          |          |           --1.50%--0xede0679443c0
+               |          |          |          |          
+               |          |          |           --1.16%--std::ostream& std::ostream::_M_insert<long>(long)
+               |          |          |          
+               |          |           --1.66%--std::basic_filebuf<char, std::char_traits<char> >::open(char const*, std::_Ios_Openmode)
+               |          |                     std::__basic_file<char>::open(char const*, std::_Ios_Openmode, int)
+               |          |                     0xede0676afcdc
+               |          |                     _IO_file_fopen
+               |          |                     _IO_file_open
+               |          |                     open64
+               |          |                     el0t_64_sync
+               |          |                     el0t_64_sync_handler
+               |          |                     el0_svc
+               |          |                     do_el0_svc
+               |          |                     el0_svc_common.constprop.0
+               |          |                     invoke_syscall
+               |          |                     __arm64_sys_openat
+               |          |                     do_sys_openat2
+               |          |                     do_filp_open
+               |          |                     path_openat
+               |          |                     do_open
+               |          |                     handle_truncate
+               |          |                     do_truncate
+               |          |                     notify_change
+               |          |                     ext4_setattr
+               |          |                     truncate_pagecache
+               |          |                     truncate_inode_pages_range
+               |          |                     find_lock_entries
+               |          |          
+               |          |--7.56%--fRead(int*, int*, int*, int*, int)
+               |          |          std::istream::operator>>(int&)
+               |          |          |          
+               |          |          |--5.69%--std::istreambuf_iterator<char, std::char_traits<char> > std::num_get<char, std::istreambuf_iterator<char, std::char_traits<char> > >::_M_extract_int<long>(std::istreambuf_iterator<char, std::char_traits<char> >, std::istreambuf_iterator<char, std::char_traits<char> >, std::ios_base&, std::_Ios_Iostate&, long&) const
+               |          |          |          |          
+               |          |          |          |--4.34%--std::istreambuf_iterator<char, std::char_traits<char> > std::num_get<char, std::istreambuf_iterator<char, std::char_traits<char> > >::_M_extract_int<long>(std::istreambuf_iterator<char, std::char_traits<char> >, std::istreambuf_iterator<char, std::char_traits<char> >, std::ios_base&, std::_Ios_Iostate&, long&) const
+               |          |          |          |          
+               |          |          |           --1.35%--0xede06793f863
+               |          |          |                     0xede06793f878
+               |          |          |          
+               |          |           --1.87%--std::istream::operator>>(int&)
+               |          |                     std::istream::sentry::sentry(std::istream&, bool)
+               |          |          
+               |           --4.88%--fCheck(int*, int, int)
+               |                     std::istream::operator>>(int&)
+               |                     std::istreambuf_iterator<char, std::char_traits<char> > std::num_get<char, std::istreambuf_iterator<char, std::char_traits<char> > >::_M_extract_int<long>(std::istreambuf_iterator<char, std::char_traits<char> >, std::istreambuf_iterator<char, std::char_traits<char> >, std::ios_base&, std::_Ios_Iostate&, long&) const
+               |                     std::istreambuf_iterator<char, std::char_traits<char> > std::num_get<char, std::istreambuf_iterator<char, std::char_traits<char> > >::_M_extract_int<long>(std::istreambuf_iterator<char, std::char_traits<char> >, std::istreambuf_iterator<char, std::char_traits<char> >, std::ios_base&, std::_Ios_Iostate&, long&) const
+               |          
+                --1.00%--0xede0676684c8
+                          0xede06767f30c
+                          0xede06767f1f8
+                          _exit
+                          el0t_64_sync
+                          el0t_64_sync_handler
+                          el0_svc
+                          do_el0_svc
+                          el0_svc_common.constprop.0
+                          invoke_syscall
+                          __arm64_sys_exit_group
+                          do_group_exit
+                          do_exit
+                          acct_collect
+
+    98.99%     0.00%  ntt_perf  libc.so.6            [.] 0x0000ede0676684c4
+            |
+            ---0xede0676684c4
+               main
+               |          
+               |--73.15%--NTT_multiply_Montgomery(int*, int*, int*, int, int)
+               |          NTT_Montgomery(int*, int, bool, int, int)
+               |          
+               |--13.40%--fWrite(int*, int, int)
+               |          |          
+               |          |--11.74%--std::ostream& std::ostream::_M_insert<long>(long)
+               |          |          |          
+               |          |          |--10.58%--std::ostreambuf_iterator<char, std::char_traits<char> > std::num_put<char, std::ostreambuf_iterator<char, std::char_traits<char> > >::_M_insert_int<long>(std::ostreambuf_iterator<char, std::char_traits<char> >, std::ios_base&, char, long) const
+               |          |          |          |          
+               |          |          |          |--4.32%--std::basic_filebuf<char, std::char_traits<char> >::xsputn(char const*, long)
+               |          |          |          |          std::__basic_file<char>::xsputn_2(char const*, long, char const*, long)
+               |          |          |          |          writev
+               |          |          |          |          el0t_64_sync
+               |          |          |          |          el0t_64_sync_handler
+               |          |          |          |          el0_svc
+               |          |          |          |          do_el0_svc
+               |          |          |          |          el0_svc_common.constprop.0
+               |          |          |          |          invoke_syscall
+               |          |          |          |          __arm64_sys_writev
+               |          |          |          |          do_writev
+               |          |          |          |          vfs_writev
+               |          |          |          |          do_iter_readv_writev
+               |          |          |          |          ext4_file_write_iter
+               |          |          |          |          ext4_buffered_write_iter
+               |          |          |          |          |          
+               |          |          |          |          |--3.14%--generic_perform_write
+               |          |          |          |          |          ext4_da_write_begin
+               |          |          |          |          |          __filemap_get_folio
+               |          |          |          |          |          filemap_alloc_folio
+               |          |          |          |          |          folio_alloc
+               |          |          |          |          |          alloc_pages
+               |          |          |          |          |          |          
+               |          |          |          |          |           --1.64%--alloc_pages_mpol
+               |          |          |          |          |                     __alloc_pages
+               |          |          |          |          |                     get_page_from_freelist
+               |          |          |          |          |                     __pi_clear_page
+               |          |          |          |          |          
+               |          |          |          |           --1.18%--ext4_generic_write_checks
+               |          |          |          |                     generic_write_checks
+               |          |          |          |          
+               |          |          |          |--1.68%--0xede0679443e0
+               |          |          |          |          
+               |          |          |          |--1.56%--std::ostreambuf_iterator<char, std::char_traits<char> > std::num_put<char, std::ostreambuf_iterator<char, std::char_traits<char> > >::_M_insert_int<long>(std::ostreambuf_iterator<char, std::char_traits<char> >, std::ios_base&, char, long) const
+               |          |          |          |          
+               |          |          |          |--1.52%--std::basic_streambuf<char, std::char_traits<char> >::xsputn(char const*, long)
+               |          |          |          |          memcpy@plt
+               |          |          |          |          
+               |          |          |           --1.50%--0xede0679443c0
+               |          |          |          
+               |          |           --1.16%--std::ostream& std::ostream::_M_insert<long>(long)
+               |          |          
+               |           --1.66%--std::basic_filebuf<char, std::char_traits<char> >::open(char const*, std::_Ios_Openmode)
+               |                     std::__basic_file<char>::open(char const*, std::_Ios_Openmode, int)
+               |                     0xede0676afcdc
+               |                     _IO_file_fopen
+               |                     _IO_file_open
+               |                     open64
+               |                     el0t_64_sync
+               |                     el0t_64_sync_handler
+               |                     el0_svc
+               |                     do_el0_svc
+               |                     el0_svc_common.constprop.0
+               |                     invoke_syscall
+               |                     __arm64_sys_openat
+               |                     do_sys_openat2
+               |                     do_filp_open
+               |                     path_openat
+               |                     do_open
+               |                     handle_truncate
+               |                     do_truncate
+               |                     notify_change
+               |                     ext4_setattr
+               |                     truncate_pagecache
+               |                     truncate_inode_pages_range
+               |                     find_lock_entries
+               |          
+               |--7.56%--fRead(int*, int*, int*, int*, int)
+               |          std::istream::operator>>(int&)
+               |          |          
+               |          |--5.69%--std::istreambuf_iterator<char, std::char_traits<char> > std::num_get<char, std::istreambuf_iterator<char, std::char_traits<char> > >::_M_extract_int<long>(std::istreambuf_iterator<char, std::char_traits<char> >, std::istreambuf_iterator<char, std::char_traits<char> >, std::ios_base&, std::_Ios_Iostate&, long&) const
+               |          |          |          
+               |          |          |--4.34%--std::istreambuf_iterator<char, std::char_traits<char> > std::num_get<char, std::istreambuf_iterator<char, std::char_traits<char> > >::_M_extract_int<long>(std::istreambuf_iterator<char, std::char_traits<char> >, std::istreambuf_iterator<char, std::char_traits<char> >, std::ios_base&, std::_Ios_Iostate&, long&) const
+               |          |          |          
+               |          |           --1.35%--0xede06793f863
+               |          |                     0xede06793f878
+               |          |          
+               |           --1.87%--std::istream::operator>>(int&)
+               |                     std::istream::sentry::sentry(std::istream&, bool)
+               |          
+                --4.88%--fCheck(int*, int, int)
+                          std::istream::operator>>(int&)
+                          std::istreambuf_iterator<char, std::char_traits<char> > std::num_get<char, std::istreambuf_iterator<char, std::char_traits<char> > >::_M_extract_int<long>(std::istreambuf_iterator<char, std::char_traits<char> >, std::istreambuf_iterator<char, std::char_traits<char> >, std::ios_base&, std::_Ios_Iostate&, long&) const
+                          std::istreambuf_iterator<char, std::char_traits<char> > std::num_get<char, std::istreambuf_iterator<char, std::char_traits<char> > >::_M_extract_int<long>(std::istreambuf_iterator<char, std::char_traits<char> >, std::istreambuf_iterator<char, std::char_traits<char> >, std::ios_base&, std::_Ios_Iostate&, long&) const
+
+    98.99%     0.00%  ntt_perf  ntt_perf             [.] main
+            |
+            ---main
+               |          
+               |--73.15%--NTT_multiply_Montgomery(int*, int*, int*, int, int)
+               |          NTT_Montgomery(int*, int, bool, int, int)
+               |          
+               |--13.40%--fWrite(int*, int, int)
+               |          |          
+               |          |--11.74%--std::ostream& std::ostream::_M_insert<long>(long)
+               |          |          |          
+               |          |          |--10.58%--std::ostreambuf_iterator<char, std::char_traits<char> > std::num_put<char, std::ostreambuf_iterator<char, std::char_traits<char> > >::_M_insert_int<long>(std::ostreambuf_iterator<char, std::char_traits<char> >, std::ios_base&, char, long) const
+               |          |          |          |          
+               |          |          |          |--4.32%--std::basic_filebuf<char, std::char_traits<char> >::xsputn(char const*, long)
+               |          |          |          |          std::__basic_file<char>::xsputn_2(char const*, long, char const*, long)
+               |          |          |          |          writev
+               |          |          |          |          el0t_64_sync
+               |          |          |          |          el0t_64_sync_handler
+               |          |          |          |          el0_svc
+               |          |          |          |          do_el0_svc
+               |          |          |          |          el0_svc_common.constprop.0
+               |          |          |          |          invoke_syscall
+               |          |          |          |          __arm64_sys_writev
+               |          |          |          |          do_writev
+               |          |          |          |          vfs_writev
+               |          |          |          |          do_iter_readv_writev
+               |          |          |          |          ext4_file_write_iter
+               |          |          |          |          ext4_buffered_write_iter
+               |          |          |          |          |          
+               |          |          |          |          |--3.14%--generic_perform_write
+               |          |          |          |          |          ext4_da_write_begin
+               |          |          |          |          |          __filemap_get_folio
+               |          |          |          |          |          filemap_alloc_folio
+               |          |          |          |          |          folio_alloc
+               |          |          |          |          |          alloc_pages
+               |          |          |          |          |          |          
+               |          |          |          |          |           --1.64%--alloc_pages_mpol
+               |          |          |          |          |                     __alloc_pages
+               |          |          |          |          |                     get_page_from_freelist
+               |          |          |          |          |                     __pi_clear_page
+               |          |          |          |          |          
+               |          |          |          |           --1.18%--ext4_generic_write_checks
+               |          |          |          |                     generic_write_checks
+               |          |          |          |          
+               |          |          |          |--1.68%--0xede0679443e0
+               |          |          |          |          
+               |          |          |          |--1.56%--std::ostreambuf_iterator<char, std::char_traits<char> > std::num_put<char, std::ostreambuf_iterator<char, std::char_traits<char> > >::_M_insert_int<long>(std::ostreambuf_iterator<char, std::char_traits<char> >, std::ios_base&, char, long) const
+               |          |          |          |          
+               |          |          |          |--1.52%--std::basic_streambuf<char, std::char_traits<char> >::xsputn(char const*, long)
+               |          |          |          |          memcpy@plt
+               |          |          |          |          
+               |          |          |           --1.50%--0xede0679443c0
+               |          |          |          
+               |          |           --1.16%--std::ostream& std::ostream::_M_insert<long>(long)
+               |          |          
+               |           --1.66%--std::basic_filebuf<char, std::char_traits<char> >::open(char const*, std::_Ios_Openmode)
+               |                     std::__basic_file<char>::open(char const*, std::_Ios_Openmode, int)
+               |                     0xede0676afcdc
+               |                     _IO_file_fopen
+               |                     _IO_file_open
+               |                     open64
+               |                     el0t_64_sync
+               |                     el0t_64_sync_handler
+               |                     el0_svc
+               |                     do_el0_svc
+               |                     el0_svc_common.constprop.0
+               |                     invoke_syscall
+               |                     __arm64_sys_openat
+               |                     do_sys_openat2
+               |                     do_filp_open
+               |                     path_openat
+               |                     do_open
+               |                     handle_truncate
+               |                     do_truncate
+               |                     notify_change
+               |                     ext4_setattr
+               |                     truncate_pagecache
+               |                     truncate_inode_pages_range
+               |                     find_lock_entries
+               |          
+               |--7.56%--fRead(int*, int*, int*, int*, int)
+               |          std::istream::operator>>(int&)
+               |          |          
+               |          |--5.69%--std::istreambuf_iterator<char, std::char_traits<char> > std::num_get<char, std::istreambuf_iterator<char, std::char_traits<char> > >::_M_extract_int<long>(std::istreambuf_iterator<char, std::char_traits<char> >, std::istreambuf_iterator<char, std::char_traits<char> >, std::ios_base&, std::_Ios_Iostate&, long&) const
+               |          |          |          
+               |          |          |--4.34%--std::istreambuf_iterator<char, std::char_traits<char> > std::num_get<char, std::istreambuf_iterator<char, std::char_traits<char> > >::_M_extract_int<long>(std::istreambuf_iterator<char, std::char_traits<char> >, std::istreambuf_iterator<char, std::char_traits<char> >, std::ios_base&, std::_Ios_Iostate&, long&) const
+               |          |          |          
+               |          |           --1.35%--0xede06793f863
+               |          |                     0xede06793f878
+               |          |          
+               |           --1.87%--std::istream::operator>>(int&)
+               |                     std::istream::sentry::sentry(std::istream&, bool)
+               |          
+                --4.88%--fCheck(int*, int, int)
+                          std::istream::operator>>(int&)
+                          std::istreambuf_iterator<char, std::char_traits<char> > std::num_get<char, std::istreambuf_iterator<char, std::char_traits<char> > >::_M_extract_int<long>(std::istreambuf_iterator<char, std::char_traits<char> >, std::istreambuf_iterator<char, std::char_traits<char> >, std::ios_base&, std::_Ios_Iostate&, long&) const
+                          std::istreambuf_iterator<char, std::char_traits<char> > std::num_get<char, std::istreambuf_iterator<char, std::char_traits<char> > >::_M_extract_int<long>(std::istreambuf_iterator<char, std::char_traits<char> >, std::istreambuf_iterator<char, std::char_traits<char> >, std::ios_base&, std::_Ios_Iostate&, long&) const
+
+    73.15%    73.15%  ntt_perf  ntt_perf             [.] NTT_Montgomery(int*, int, bool, int, int)
+            |
+            ---_start
+               __libc_start_main
+               0xede0676684c4
+               main
+               NTT_multiply_Montgomery(int*, int*, int*, int, int)
+               NTT_Montgomery(int*, int, bool, int, int)
+
+    73.15%     0.00%  ntt_perf  ntt_perf             [.] NTT_multiply_Montgomery(int*, int*, int*, int, int)
+            |
+            ---NTT_multiply_Montgomery(int*, int*, int*, int, int)
+               NTT_Montgomery(int*, int, bool, int, int)
+
+    13.40%     0.00%  ntt_perf  ntt_perf             [.] fWrite(int*, int, int)
+            |
+            ---fWrite(int*, int, int)
+               |          
+               |--11.74%--std::ostream& std::ostream::_M_insert<long>(long)
+               |          |          
+               |          |--10.58%--std::ostreambuf_iterator<char, std::char_traits<char> > std::num_put<char, std::ostreambuf_iterator<char, std::char_traits<char> > >::_M_insert_int<long>(std::ostreambuf_iterator<char, std::char_traits<char> >, std::ios_base&, char, long) const
+               |          |          |          
+               |          |          |--4.32%--std::basic_filebuf<char, std::char_traits<char> >::xsputn(char const*, long)
+               |          |          |          std::__basic_file<char>::xsputn_2(char const*, long, char const*, long)
+               |          |          |          writev
+               |          |          |          el0t_64_sync
+               |          |          |          el0t_64_sync_handler
+               |          |          |          el0_svc
+               |          |          |          do_el0_svc
+               |          |          |          el0_svc_common.constprop.0
+               |          |          |          invoke_syscall
+               |          |          |          __arm64_sys_writev
+               |          |          |          do_writev
+               |          |          |          vfs_writev
+               |          |          |          do_iter_readv_writev
+               |          |          |          ext4_file_write_iter
+               |          |          |          ext4_buffered_write_iter
+               |          |          |          |          
+               |          |          |          |--3.14%--generic_perform_write
+               |          |          |          |          ext4_da_write_begin
+               |          |          |          |          __filemap_get_folio
+               |          |          |          |          filemap_alloc_folio
+               |          |          |          |          folio_alloc
+               |          |          |          |          alloc_pages
+               |          |          |          |          |          
+               |          |          |          |           --1.64%--alloc_pages_mpol
+               |          |          |          |                     __alloc_pages
+               |          |          |          |                     get_page_from_freelist
+               |          |          |          |                     __pi_clear_page
+               |          |          |          |          
+               |          |          |           --1.18%--ext4_generic_write_checks
+               |          |          |                     generic_write_checks
+               |          |          |          
+               |          |          |--1.68%--0xede0679443e0
+               |          |          |          
+               |          |          |--1.56%--std::ostreambuf_iterator<char, std::char_traits<char> > std::num_put<char, std::ostreambuf_iterator<char, std::char_traits<char> > >::_M_insert_int<long>(std::ostreambuf_iterator<char, std::char_traits<char> >, std::ios_base&, char, long) const
+               |          |          |          
+               |          |          |--1.52%--std::basic_streambuf<char, std::char_traits<char> >::xsputn(char const*, long)
+               |          |          |          memcpy@plt
+               |          |          |          
+               |          |           --1.50%--0xede0679443c0
+               |          |          
+               |           --1.16%--std::ostream& std::ostream::_M_insert<long>(long)
+               |          
+                --1.66%--std::basic_filebuf<char, std::char_traits<char> >::open(char const*, std::_Ios_Openmode)
+                          std::__basic_file<char>::open(char const*, std::_Ios_Openmode, int)
+                          0xede0676afcdc
+                          _IO_file_fopen
+                          _IO_file_open
+                          open64
+                          el0t_64_sync
+                          el0t_64_sync_handler
+                          el0_svc
+                          do_el0_svc
+                          el0_svc_common.constprop.0
+                          invoke_syscall
+                          __arm64_sys_openat
+                          do_sys_openat2
+                          do_filp_open
+                          path_openat
+                          do_open
+                          handle_truncate
+                          do_truncate
+                          notify_change
+                          ext4_setattr
+                          truncate_pagecache
+                          truncate_inode_pages_range
+                          find_lock_entries
+
+    12.44%     0.00%  ntt_perf  libstdc++.so.6.0.33  [.] std::istream::operator>>(int&)
+            |
+            ---std::istream::operator>>(int&)
+               |          
+               |--10.57%--std::istreambuf_iterator<char, std::char_traits<char> > std::num_get<char, std::istreambuf_iterator<char, std::char_traits<char> > >::_M_extract_int<long>(std::istreambuf_iterator<char, std::char_traits<char> >, std::istreambuf_iterator<char, std::char_traits<char> >, std::ios_base&, std::_Ios_Iostate&, long&) const
+               |          |          
+               |          |--9.22%--std::istreambuf_iterator<char, std::char_traits<char> > std::num_get<char, std::istreambuf_iterator<char, std::char_traits<char> > >::_M_extract_int<long>(std::istreambuf_iterator<char, std::char_traits<char> >, std::istreambuf_iterator<char, std::char_traits<char> >, std::ios_base&, std::_Ios_Iostate&, long&) const
+               |          |          
+               |           --1.35%--0xede06793f863
+               |                     0xede06793f878
+               |          
+                --1.87%--std::istream::operator>>(int&)
+                          std::istream::sentry::sentry(std::istream&, bool)
+
+    11.74%     1.16%  ntt_perf  libstdc++.so.6.0.33  [.] std::ostream& std::ostream::_M_insert<long>(long)
+            |          
+            |--10.58%--std::ostream& std::ostream::_M_insert<long>(long)
+            |          std::ostreambuf_iterator<char, std::char_traits<char> > std::num_put<char, std::ostreambuf_iterator<char, std::char_traits<char> > >::_M_insert_int<long>(std::ostreambuf_iterator<char, std::char_traits<char> >, std::ios_base&, char, long) const
+            |          |          
+            |          |--4.32%--std::basic_filebuf<char, std::char_traits<char> >::xsputn(char const*, long)
+            |          |          std::__basic_file<char>::xsputn_2(char const*, long, char const*, long)
+            |          |          writev
+            |          |          el0t_64_sync
+            |          |          el0t_64_sync_handler
+            |          |          el0_svc
+            |          |          do_el0_svc
+            |          |          el0_svc_common.constprop.0
+            |          |          invoke_syscall
+            |          |          __arm64_sys_writev
+            |          |          do_writev
+            |          |          vfs_writev
+            |          |          do_iter_readv_writev
+            |          |          ext4_file_write_iter
+            |          |          ext4_buffered_write_iter
+            |          |          |          
+            |          |          |--3.14%--generic_perform_write
+            |          |          |          ext4_da_write_begin
+            |          |          |          __filemap_get_folio
+            |          |          |          filemap_alloc_folio
+            |          |          |          folio_alloc
+            |          |          |          alloc_pages
+            |          |          |          |          
+            |          |          |           --1.64%--alloc_pages_mpol
+            |          |          |                     __alloc_pages
+            |          |          |                     get_page_from_freelist
+            |          |          |                     __pi_clear_page
+            |          |          |          
+            |          |           --1.18%--ext4_generic_write_checks
+            |          |                     generic_write_checks
+            |          |          
+            |          |--1.68%--0xede0679443e0
+            |          |          
+            |          |--1.56%--std::ostreambuf_iterator<char, std::char_traits<char> > std::num_put<char, std::ostreambuf_iterator<char, std::char_traits<char> > >::_M_insert_int<long>(std::ostreambuf_iterator<char, std::char_traits<char> >, std::ios_base&, char, long) const
+            |          |          
+            |          |--1.52%--std::basic_streambuf<char, std::char_traits<char> >::xsputn(char const*, long)
+            |          |          memcpy@plt
+            |          |          
+            |           --1.50%--0xede0679443c0
+            |          
+             --1.16%--_start
+                       __libc_start_main
+                       0xede0676684c4
+                       main
+                       fWrite(int*, int, int)
+                       std::ostream& std::ostream::_M_insert<long>(long)
+                       std::ostream& std::ostream::_M_insert<long>(long)
+
+    10.58%     1.56%  ntt_perf  libstdc++.so.6.0.33  [.] std::ostreambuf_iterator<char, std::char_traits<char> > std::num_put<char, std::ostreambuf_iterator<char, std::char_traits<char> > >::_M_insert_int<long>(std::ostreambuf_iterator<char, std::char_traits<char> >, std::ios_base&, char, long) const
+            |          
+            |--9.02%--std::ostreambuf_iterator<char, std::char_traits<char> > std::num_put<char, std::ostreambuf_iterator<char, std::char_traits<char> > >::_M_insert_int<long>(std::ostreambuf_iterator<char, std::char_traits<char> >, std::ios_base&, char, long) const
+            |          |          
+            |          |--4.32%--std::basic_filebuf<char, std::char_traits<char> >::xsputn(char const*, long)
+            |          |          std::__basic_file<char>::xsputn_2(char const*, long, char const*, long)
+            |          |          writev
+            |          |          el0t_64_sync
+            |          |          el0t_64_sync_handler
+            |          |          el0_svc
+            |          |          do_el0_svc
+            |          |          el0_svc_common.constprop.0
+            |          |          invoke_syscall
+            |          |          __arm64_sys_writev
+            |          |          do_writev
+            |          |          vfs_writev
+            |          |          do_iter_readv_writev
+            |          |          ext4_file_write_iter
+            |          |          ext4_buffered_write_iter
+            |          |          |          
+            |          |          |--3.14%--generic_perform_write
+            |          |          |          ext4_da_write_begin
+            |          |          |          __filemap_get_folio
+            |          |          |          filemap_alloc_folio
+            |          |          |          folio_alloc
+            |          |          |          alloc_pages
+            |          |          |          |          
+            |          |          |           --1.64%--alloc_pages_mpol
+            |          |          |                     __alloc_pages
+            |          |          |                     get_page_from_freelist
+            |          |          |                     __pi_clear_page
+            |          |          |          
+            |          |           --1.18%--ext4_generic_write_checks
+            |          |                     generic_write_checks
+            |          |          
+            |          |--1.68%--0xede0679443e0
+            |          |          
+            |          |--1.52%--std::basic_streambuf<char, std::char_traits<char> >::xsputn(char const*, long)
+            |          |          memcpy@plt
+            |          |          
+            |           --1.50%--0xede0679443c0
+            |          
+             --1.56%--_start
+                       __libc_start_main
+                       0xede0676684c4
+                       main
+                       fWrite(int*, int, int)
+                       std::ostream& std::ostream::_M_insert<long>(long)
+                       std::ostreambuf_iterator<char, std::char_traits<char> > std::num_put<char, std::ostreambuf_iterator<char, std::char_traits<char> > >::_M_insert_int<long>(std::ostreambuf_iterator<char, std::char_traits<char> >, std::ios_base&, char, long) const
+                       std::ostreambuf_iterator<char, std::char_traits<char> > std::num_put<char, std::ostreambuf_iterator<char, std::char_traits<char> > >::_M_insert_int<long>(std::ostreambuf_iterator<char, std::char_traits<char> >, std::ios_base&, char, long) const
+
+    10.57%     9.22%  ntt_perf  libstdc++.so.6.0.33  [.] std::istreambuf_iterator<char, std::char_traits<char> > std::num_get<char, std::istreambuf_iterator<char, std::char_traits<char> > >::_M_extract_int<long>(std::istreambuf_iterator<char, std::char_traits<char> >, std::istreambuf_iterator<char, std::char_traits<char> >, std::ios_base&, std::_Ios_Iostate&, long&) const
+            |          
+            |--9.22%--_start
+            |          __libc_start_main
+            |          0xede0676684c4
+            |          main
+            |          |          
+            |          |--4.88%--fCheck(int*, int, int)
+            |          |          std::istream::operator>>(int&)
+            |          |          std::istreambuf_iterator<char, std::char_traits<char> > std::num_get<char, std::istreambuf_iterator<char, std::char_traits<char> > >::_M_extract_int<long>(std::istreambuf_iterator<char, std::char_traits<char> >, std::istreambuf_iterator<char, std::char_traits<char> >, std::ios_base&, std::_Ios_Iostate&, long&) const
+            |          |          std::istreambuf_iterator<char, std::char_traits<char> > std::num_get<char, std::istreambuf_iterator<char, std::char_traits<char> > >::_M_extract_int<long>(std::istreambuf_iterator<char, std::char_traits<char> >, std::istreambuf_iterator<char, std::char_traits<char> >, std::ios_base&, std::_Ios_Iostate&, long&) const
+            |          |          
+            |           --4.34%--fRead(int*, int*, int*, int*, int)
+            |                     std::istream::operator>>(int&)
+            |                     std::istreambuf_iterator<char, std::char_traits<char> > std::num_get<char, std::istreambuf_iterator<char, std::char_traits<char> > >::_M_extract_int<long>(std::istreambuf_iterator<char, std::char_traits<char> >, std::istreambuf_iterator<char, std::char_traits<char> >, std::ios_base&, std::_Ios_Iostate&, long&) const
+            |                     std::istreambuf_iterator<char, std::char_traits<char> > std::num_get<char, std::istreambuf_iterator<char, std::char_traits<char> > >::_M_extract_int<long>(std::istreambuf_iterator<char, std::char_traits<char> >, std::istreambuf_iterator<char, std::char_traits<char> >, std::ios_base&, std::_Ios_Iostate&, long&) const
+            |          
+             --1.35%--std::istreambuf_iterator<char, std::char_traits<char> > std::num_get<char, std::istreambuf_iterator<char, std::char_traits<char> > >::_M_extract_int<long>(std::istreambuf_iterator<char, std::char_traits<char> >, std::istreambuf_iterator<char, std::char_traits<char> >, std::ios_base&, std::_Ios_Iostate&, long&) const
+                       0xede06793f863
+                       0xede06793f878
+
+     7.56%     0.00%  ntt_perf  ntt_perf             [.] fRead(int*, int*, int*, int*, int)
+            |
+            ---fRead(int*, int*, int*, int*, int)
+               std::istream::operator>>(int&)
+               |          
+               |--5.69%--std::istreambuf_iterator<char, std::char_traits<char> > std::num_get<char, std::istreambuf_iterator<char, std::char_traits<char> > >::_M_extract_int<long>(std::istreambuf_iterator<char, std::char_traits<char> >, std::istreambuf_iterator<char, std::char_traits<char> >, std::ios_base&, std::_Ios_Iostate&, long&) const
+               |          |          
+               |          |--4.34%--std::istreambuf_iterator<char, std::char_traits<char> > std::num_get<char, std::istreambuf_iterator<char, std::char_traits<char> > >::_M_extract_int<long>(std::istreambuf_iterator<char, std::char_traits<char> >, std::istreambuf_iterator<char, std::char_traits<char> >, std::ios_base&, std::_Ios_Iostate&, long&) const
+               |          |          
+               |           --1.35%--0xede06793f863
+               |                     0xede06793f878
+               |          
+                --1.87%--std::istream::operator>>(int&)
+                          std::istream::sentry::sentry(std::istream&, bool)
+
+     7.00%     0.00%  ntt_perf  [kernel.kallsyms]    [k] el0t_64_sync
+            |
+            ---el0t_64_sync
+               el0t_64_sync_handler
+               el0_svc
+               do_el0_svc
+               el0_svc_common.constprop.0
+               invoke_syscall
+               |          
+               |--4.32%--__arm64_sys_writev
+               |          do_writev
+               |          vfs_writev
+               |          do_iter_readv_writev
+               |          ext4_file_write_iter
+               |          ext4_buffered_write_iter
+               |          |          
+               |          |--3.14%--generic_perform_write
+               |          |          ext4_da_write_begin
+               |          |          __filemap_get_folio
+               |          |          filemap_alloc_folio
+               |          |          folio_alloc
+               |          |          alloc_pages
+               |          |          |          
+               |          |           --1.64%--alloc_pages_mpol
+               |          |                     __alloc_pages
+               |          |                     get_page_from_freelist
+               |          |                     __pi_clear_page
+               |          |          
+               |           --1.18%--ext4_generic_write_checks
+               |                     generic_write_checks
+               |          
+               |--1.66%--__arm64_sys_openat
+               |          do_sys_openat2
+               |          do_filp_open
+               |          path_openat
+               |          do_open
+               |          handle_truncate
+               |          do_truncate
+               |          notify_change
+               |          ext4_setattr
+               |          truncate_pagecache
+               |          truncate_inode_pages_range
+               |          find_lock_entries
+               |          
+                --1.00%--__arm64_sys_exit_group
+                          do_group_exit
+                          do_exit
+                          acct_collect
+
+     7.00%     0.00%  ntt_perf  [kernel.kallsyms]    [k] el0t_64_sync_handler
+            |
+            ---el0t_64_sync_handler
+               el0_svc
+               do_el0_svc
+               el0_svc_common.constprop.0
+               invoke_syscall
+               |          
+               |--4.32%--__arm64_sys_writev
+               |          do_writev
+               |          vfs_writev
+               |          do_iter_readv_writev
+               |          ext4_file_write_iter
+               |          ext4_buffered_write_iter
+               |          |          
+               |          |--3.14%--generic_perform_write
+               |          |          ext4_da_write_begin
+               |          |          __filemap_get_folio
+               |          |          filemap_alloc_folio
+               |          |          folio_alloc
+               |          |          alloc_pages
+               |          |          |          
+               |          |           --1.64%--alloc_pages_mpol
+               |          |                     __alloc_pages
+               |          |                     get_page_from_freelist
+               |          |                     __pi_clear_page
+               |          |          
+               |           --1.18%--ext4_generic_write_checks
+               |                     generic_write_checks
+               |          
+               |--1.66%--__arm64_sys_openat
+               |          do_sys_openat2
+               |          do_filp_open
+               |          path_openat
+               |          do_open
+               |          handle_truncate
+               |          do_truncate
+               |          notify_change
+               |          ext4_setattr
+               |          truncate_pagecache
+               |          truncate_inode_pages_range
+               |          find_lock_entries
+               |          
+                --1.00%--__arm64_sys_exit_group
+                          do_group_exit
+                          do_exit
+                          acct_collect
+
+     7.00%     0.00%  ntt_perf  [kernel.kallsyms]    [k] el0_svc
+            |
+            ---el0_svc
+               do_el0_svc
+               el0_svc_common.constprop.0
+               invoke_syscall
+               |          
+               |--4.32%--__arm64_sys_writev
+               |          do_writev
+               |          vfs_writev
+               |          do_iter_readv_writev
+               |          ext4_file_write_iter
+               |          ext4_buffered_write_iter
+               |          |          
+               |          |--3.14%--generic_perform_write
+               |          |          ext4_da_write_begin
+               |          |          __filemap_get_folio
+               |          |          filemap_alloc_folio
+               |          |          folio_alloc
+               |          |          alloc_pages
+               |          |          |          
+               |          |           --1.64%--alloc_pages_mpol
+               |          |                     __alloc_pages
+               |          |                     get_page_from_freelist
+               |          |                     __pi_clear_page
+               |          |          
+               |           --1.18%--ext4_generic_write_checks
+               |                     generic_write_checks
+               |          
+               |--1.66%--__arm64_sys_openat
+               |          do_sys_openat2
+               |          do_filp_open
+               |          path_openat
+               |          do_open
+               |          handle_truncate
+               |          do_truncate
+               |          notify_change
+               |          ext4_setattr
+               |          truncate_pagecache
+               |          truncate_inode_pages_range
+               |          find_lock_entries
+               |          
+                --1.00%--__arm64_sys_exit_group
+                          do_group_exit
+                          do_exit
+                          acct_collect
+
+     7.00%     0.00%  ntt_perf  [kernel.kallsyms]    [k] do_el0_svc
+            |
+            ---do_el0_svc
+               el0_svc_common.constprop.0
+               invoke_syscall
+               |          
+               |--4.32%--__arm64_sys_writev
+               |          do_writev
+               |          vfs_writev
+               |          do_iter_readv_writev
+               |          ext4_file_write_iter
+               |          ext4_buffered_write_iter
+               |          |          
+               |          |--3.14%--generic_perform_write
+               |          |          ext4_da_write_begin
+               |          |          __filemap_get_folio
+               |          |          filemap_alloc_folio
+               |          |          folio_alloc
+               |          |          alloc_pages
+               |          |          |          
+               |          |           --1.64%--alloc_pages_mpol
+               |          |                     __alloc_pages
+               |          |                     get_page_from_freelist
+               |          |                     __pi_clear_page
+               |          |          
+               |           --1.18%--ext4_generic_write_checks
+               |                     generic_write_checks
+               |          
+               |--1.66%--__arm64_sys_openat
+               |          do_sys_openat2
+               |          do_filp_open
+               |          path_openat
+               |          do_open
+               |          handle_truncate
+               |          do_truncate
+               |          notify_change
+               |          ext4_setattr
+               |          truncate_pagecache
+               |          truncate_inode_pages_range
+               |          find_lock_entries
+               |          
+                --1.00%--__arm64_sys_exit_group
+                          do_group_exit
+                          do_exit
+                          acct_collect
+
+     7.00%     0.00%  ntt_perf  [kernel.kallsyms]    [k] el0_svc_common.constprop.0
+            |
+            ---el0_svc_common.constprop.0
+               invoke_syscall
+               |          
+               |--4.32%--__arm64_sys_writev
+               |          do_writev
+               |          vfs_writev
+               |          do_iter_readv_writev
+               |          ext4_file_write_iter
+               |          ext4_buffered_write_iter
+               |          |          
+               |          |--3.14%--generic_perform_write
+               |          |          ext4_da_write_begin
+               |          |          __filemap_get_folio
+               |          |          filemap_alloc_folio
+               |          |          folio_alloc
+               |          |          alloc_pages
+               |          |          |          
+               |          |           --1.64%--alloc_pages_mpol
+               |          |                     __alloc_pages
+               |          |                     get_page_from_freelist
+               |          |                     __pi_clear_page
+               |          |          
+               |           --1.18%--ext4_generic_write_checks
+               |                     generic_write_checks
+               |          
+               |--1.66%--__arm64_sys_openat
+               |          do_sys_openat2
+               |          do_filp_open
+               |          path_openat
+               |          do_open
+               |          handle_truncate
+               |          do_truncate
+               |          notify_change
+               |          ext4_setattr
+               |          truncate_pagecache
+               |          truncate_inode_pages_range
+               |          find_lock_entries
+               |          
+                --1.00%--__arm64_sys_exit_group
+                          do_group_exit
+                          do_exit
+                          acct_collect
+
+     7.00%     0.00%  ntt_perf  [kernel.kallsyms]    [k] invoke_syscall
+            |
+            ---invoke_syscall
+               |          
+               |--4.32%--__arm64_sys_writev
+               |          do_writev
+               |          vfs_writev
+               |          do_iter_readv_writev
+               |          ext4_file_write_iter
+               |          ext4_buffered_write_iter
+               |          |          
+               |          |--3.14%--generic_perform_write
+               |          |          ext4_da_write_begin
+               |          |          __filemap_get_folio
+               |          |          filemap_alloc_folio
+               |          |          folio_alloc
+               |          |          alloc_pages
+               |          |          |          
+               |          |           --1.64%--alloc_pages_mpol
+               |          |                     __alloc_pages
+               |          |                     get_page_from_freelist
+               |          |                     __pi_clear_page
+               |          |          
+               |           --1.18%--ext4_generic_write_checks
+               |                     generic_write_checks
+               |          
+               |--1.66%--__arm64_sys_openat
+               |          do_sys_openat2
+               |          do_filp_open
+               |          path_openat
+               |          do_open
+               |          handle_truncate
+               |          do_truncate
+               |          notify_change
+               |          ext4_setattr
+               |          truncate_pagecache
+               |          truncate_inode_pages_range
+               |          find_lock_entries
+               |          
+                --1.00%--__arm64_sys_exit_group
+                          do_group_exit
+                          do_exit
+                          acct_collect
+
+     4.88%     0.00%  ntt_perf  ntt_perf             [.] fCheck(int*, int, int)
+            |
+            ---fCheck(int*, int, int)
+               std::istream::operator>>(int&)
+               std::istreambuf_iterator<char, std::char_traits<char> > std::num_get<char, std::istreambuf_iterator<char, std::char_traits<char> > >::_M_extract_int<long>(std::istreambuf_iterator<char, std::char_traits<char> >, std::istreambuf_iterator<char, std::char_traits<char> >, std::ios_base&, std::_Ios_Iostate&, long&) const
+               std::istreambuf_iterator<char, std::char_traits<char> > std::num_get<char, std::istreambuf_iterator<char, std::char_traits<char> > >::_M_extract_int<long>(std::istreambuf_iterator<char, std::char_traits<char> >, std::istreambuf_iterator<char, std::char_traits<char> >, std::ios_base&, std::_Ios_Iostate&, long&) const
+
+     4.32%     0.00%  ntt_perf  libstdc++.so.6.0.33  [.] std::basic_filebuf<char, std::char_traits<char> >::xsputn(char const*, long)
+            |
+            ---std::basic_filebuf<char, std::char_traits<char> >::xsputn(char const*, long)
+               std::__basic_file<char>::xsputn_2(char const*, long, char const*, long)
+               writev
+               el0t_64_sync
+               el0t_64_sync_handler
+               el0_svc
+               do_el0_svc
+               el0_svc_common.constprop.0
+               invoke_syscall
+               __arm64_sys_writev
+               do_writev
+               vfs_writev
+               do_iter_readv_writev
+               ext4_file_write_iter
+               ext4_buffered_write_iter
+               |          
+               |--3.14%--generic_perform_write
+               |          ext4_da_write_begin
+               |          __filemap_get_folio
+               |          filemap_alloc_folio
+               |          folio_alloc
+               |          alloc_pages
+               |          |          
+               |           --1.64%--alloc_pages_mpol
+               |                     __alloc_pages
+               |                     get_page_from_freelist
+               |                     __pi_clear_page
+               |          
+                --1.18%--ext4_generic_write_checks
+                          generic_write_checks
+
+     4.32%     0.00%  ntt_perf  libstdc++.so.6.0.33  [.] std::__basic_file<char>::xsputn_2(char const*, long, char const*, long)
+            |
+            ---std::__basic_file<char>::xsputn_2(char const*, long, char const*, long)
+               writev
+               el0t_64_sync
+               el0t_64_sync_handler
+               el0_svc
+               do_el0_svc
+               el0_svc_common.constprop.0
+               invoke_syscall
+               __arm64_sys_writev
+               do_writev
+               vfs_writev
+               do_iter_readv_writev
+               ext4_file_write_iter
+               ext4_buffered_write_iter
+               |          
+               |--3.14%--generic_perform_write
+               |          ext4_da_write_begin
+               |          __filemap_get_folio
+               |          filemap_alloc_folio
+               |          folio_alloc
+               |          alloc_pages
+               |          |          
+               |           --1.64%--alloc_pages_mpol
+               |                     __alloc_pages
+               |                     get_page_from_freelist
+               |                     __pi_clear_page
+               |          
+                --1.18%--ext4_generic_write_checks
+                          generic_write_checks
+
+     4.32%     0.00%  ntt_perf  libc.so.6            [.] writev
+            |
+            ---writev
+               el0t_64_sync
+               el0t_64_sync_handler
+               el0_svc
+               do_el0_svc
+               el0_svc_common.constprop.0
+               invoke_syscall
+               __arm64_sys_writev
+               do_writev
+               vfs_writev
+               do_iter_readv_writev
+               ext4_file_write_iter
+               ext4_buffered_write_iter
+               |          
+               |--3.14%--generic_perform_write
+               |          ext4_da_write_begin
+               |          __filemap_get_folio
+               |          filemap_alloc_folio
+               |          folio_alloc
+               |          alloc_pages
+               |          |          
+               |           --1.64%--alloc_pages_mpol
+               |                     __alloc_pages
+               |                     get_page_from_freelist
+               |                     __pi_clear_page
+               |          
+                --1.18%--ext4_generic_write_checks
+                          generic_write_checks
+
+     4.32%     0.00%  ntt_perf  [kernel.kallsyms]    [k] __arm64_sys_writev
+            |
+            ---__arm64_sys_writev
+               do_writev
+               vfs_writev
+               do_iter_readv_writev
+               ext4_file_write_iter
+               ext4_buffered_write_iter
+               |          
+               |--3.14%--generic_perform_write
+               |          ext4_da_write_begin
+               |          __filemap_get_folio
+               |          filemap_alloc_folio
+               |          folio_alloc
+               |          alloc_pages
+               |          |          
+               |           --1.64%--alloc_pages_mpol
+               |                     __alloc_pages
+               |                     get_page_from_freelist
+               |                     __pi_clear_page
+               |          
+                --1.18%--ext4_generic_write_checks
+                          generic_write_checks
+
+     4.32%     0.00%  ntt_perf  [kernel.kallsyms]    [k] do_writev
+            |
+            ---do_writev
+               vfs_writev
+               do_iter_readv_writev
+               ext4_file_write_iter
+               ext4_buffered_write_iter
+               |          
+               |--3.14%--generic_perform_write
+               |          ext4_da_write_begin
+               |          __filemap_get_folio
+               |          filemap_alloc_folio
+               |          folio_alloc
+               |          alloc_pages
+               |          |          
+               |           --1.64%--alloc_pages_mpol
+               |                     __alloc_pages
+               |                     get_page_from_freelist
+               |                     __pi_clear_page
+               |          
+                --1.18%--ext4_generic_write_checks
+                          generic_write_checks
+
+     4.32%     0.00%  ntt_perf  [kernel.kallsyms]    [k] vfs_writev
+            |
+            ---vfs_writev
+               do_iter_readv_writev
+               ext4_file_write_iter
+               ext4_buffered_write_iter
+               |          
+               |--3.14%--generic_perform_write
+               |          ext4_da_write_begin
+               |          __filemap_get_folio
+               |          filemap_alloc_folio
+               |          folio_alloc
+               |          alloc_pages
+               |          |          
+               |           --1.64%--alloc_pages_mpol
+               |                     __alloc_pages
+               |                     get_page_from_freelist
+               |                     __pi_clear_page
+               |          
+                --1.18%--ext4_generic_write_checks
+                          generic_write_checks
+
+     4.32%     0.00%  ntt_perf  [kernel.kallsyms]    [k] do_iter_readv_writev
+            |
+            ---do_iter_readv_writev
+               ext4_file_write_iter
+               ext4_buffered_write_iter
+               |          
+               |--3.14%--generic_perform_write
+               |          ext4_da_write_begin
+               |          __filemap_get_folio
+               |          filemap_alloc_folio
+               |          folio_alloc
+               |          alloc_pages
+               |          |          
+               |           --1.64%--alloc_pages_mpol
+               |                     __alloc_pages
+               |                     get_page_from_freelist
+               |                     __pi_clear_page
+               |          
+                --1.18%--ext4_generic_write_checks
+                          generic_write_checks
+
+     4.32%     0.00%  ntt_perf  [kernel.kallsyms]    [k] ext4_file_write_iter
+            |
+            ---ext4_file_write_iter
+               ext4_buffered_write_iter
+               |          
+               |--3.14%--generic_perform_write
+               |          ext4_da_write_begin
+               |          __filemap_get_folio
+               |          filemap_alloc_folio
+               |          folio_alloc
+               |          alloc_pages
+               |          |          
+               |           --1.64%--alloc_pages_mpol
+               |                     __alloc_pages
+               |                     get_page_from_freelist
+               |                     __pi_clear_page
+               |          
+                --1.18%--ext4_generic_write_checks
+                          generic_write_checks
+
+     4.32%     0.00%  ntt_perf  [kernel.kallsyms]    [k] ext4_buffered_write_iter
+            |
+            ---ext4_buffered_write_iter
+               |          
+               |--3.14%--generic_perform_write
+               |          ext4_da_write_begin
+               |          __filemap_get_folio
+               |          filemap_alloc_folio
+               |          folio_alloc
+               |          alloc_pages
+               |          |          
+               |           --1.64%--alloc_pages_mpol
+               |                     __alloc_pages
+               |                     get_page_from_freelist
+               |                     __pi_clear_page
+               |          
+                --1.18%--ext4_generic_write_checks
+                          generic_write_checks
+
+     3.14%     1.50%  ntt_perf  [kernel.kallsyms]    [k] alloc_pages
+            |          
+            |--1.64%--alloc_pages
+            |          alloc_pages_mpol
+            |          __alloc_pages
+            |          get_page_from_freelist
+            |          __pi_clear_page
+            |          
+             --1.50%--_start
+                       __libc_start_main
+                       0xede0676684c4
+                       main
+                       fWrite(int*, int, int)
+                       std::ostream& std::ostream::_M_insert<long>(long)
+                       std::ostreambuf_iterator<char, std::char_traits<char> > std::num_put<char, std::ostreambuf_iterator<char, std::char_traits<char> > >::_M_insert_int<long>(std::ostreambuf_iterator<char, std::char_traits<char> >, std::ios_base&, char, long) const
+                       std::basic_filebuf<char, std::char_traits<char> >::xsputn(char const*, long)
+                       std::__basic_file<char>::xsputn_2(char const*, long, char const*, long)
+                       writev
+                       el0t_64_sync
+                       el0t_64_sync_handler
+                       el0_svc
+                       do_el0_svc
+                       el0_svc_common.constprop.0
+                       invoke_syscall
+                       __arm64_sys_writev
+                       do_writev
+                       vfs_writev
+                       do_iter_readv_writev
+                       ext4_file_write_iter
+                       ext4_buffered_write_iter
+                       generic_perform_write
+                       ext4_da_write_begin
+                       __filemap_get_folio
+                       filemap_alloc_folio
+                       folio_alloc
+                       alloc_pages
+
+     3.14%     0.00%  ntt_perf  [kernel.kallsyms]    [k] generic_perform_write
+            |
+            ---generic_perform_write
+               ext4_da_write_begin
+               __filemap_get_folio
+               filemap_alloc_folio
+               folio_alloc
+               alloc_pages
+               |          
+                --1.64%--alloc_pages_mpol
+                          __alloc_pages
+                          get_page_from_freelist
+                          __pi_clear_page
+
+     3.14%     0.00%  ntt_perf  [kernel.kallsyms]    [k] ext4_da_write_begin
+            |
+            ---ext4_da_write_begin
+               __filemap_get_folio
+               filemap_alloc_folio
+               folio_alloc
+               alloc_pages
+               |          
+                --1.64%--alloc_pages_mpol
+                          __alloc_pages
+                          get_page_from_freelist
+                          __pi_clear_page
+
+     3.14%     0.00%  ntt_perf  [kernel.kallsyms]    [k] __filemap_get_folio
+            |
+            ---__filemap_get_folio
+               filemap_alloc_folio
+               folio_alloc
+               alloc_pages
+               |          
+                --1.64%--alloc_pages_mpol
+                          __alloc_pages
+                          get_page_from_freelist
+                          __pi_clear_page
+
+     3.14%     0.00%  ntt_perf  [kernel.kallsyms]    [k] filemap_alloc_folio
+            |
+            ---filemap_alloc_folio
+               folio_alloc
+               alloc_pages
+               |          
+                --1.64%--alloc_pages_mpol
+                          __alloc_pages
+                          get_page_from_freelist
+                          __pi_clear_page
+
+     3.14%     0.00%  ntt_perf  [kernel.kallsyms]    [k] folio_alloc
+            |
+            ---folio_alloc
+               alloc_pages
+               |          
+                --1.64%--alloc_pages_mpol
+                          __alloc_pages
+                          get_page_from_freelist
+                          __pi_clear_page
+
+     1.87%     1.87%  ntt_perf  libstdc++.so.6.0.33  [.] std::istream::sentry::sentry(std::istream&, bool)
+            |
+            ---_start
+               __libc_start_main
+               0xede0676684c4
+               main
+               fRead(int*, int*, int*, int*, int)
+               std::istream::operator>>(int&)
+               std::istream::operator>>(int&)
+               std::istream::sentry::sentry(std::istream&, bool)
+
+     1.68%     1.68%  ntt_perf  libstdc++.so.6.0.33  [.] 0x00000000001443e0
+            |
+            ---_start
+               __libc_start_main
+               0xede0676684c4
+               main
+               fWrite(int*, int, int)
+               std::ostream& std::ostream::_M_insert<long>(long)
+               std::ostreambuf_iterator<char, std::char_traits<char> > std::num_put<char, std::ostreambuf_iterator<char, std::char_traits<char> > >::_M_insert_int<long>(std::ostreambuf_iterator<char, std::char_traits<char> >, std::ios_base&, char, long) const
+               0xede0679443e0
+
+     1.68%     0.00%  ntt_perf  libstdc++.so.6.0.33  [.] 0x0000ede0679443e0
+            |
+            ---0xede0679443e0
+
+     1.66%     1.66%  ntt_perf  [kernel.kallsyms]    [k] find_lock_entries
+            |
+            ---_start
+               __libc_start_main
+               0xede0676684c4
+               main
+               fWrite(int*, int, int)
+               std::basic_filebuf<char, std::char_traits<char> >::open(char const*, std::_Ios_Openmode)
+               std::__basic_file<char>::open(char const*, std::_Ios_Openmode, int)
+               0xede0676afcdc
+               _IO_file_fopen
+               _IO_file_open
+               open64
+               el0t_64_sync
+               el0t_64_sync_handler
+               el0_svc
+               do_el0_svc
+               el0_svc_common.constprop.0
+               invoke_syscall
+               __arm64_sys_openat
+               do_sys_openat2
+               do_filp_open
+               path_openat
+               do_open
+               handle_truncate
+               do_truncate
+               notify_change
+               ext4_setattr
+               truncate_pagecache
+               truncate_inode_pages_range
+               find_lock_entries
+
+     1.66%     0.00%  ntt_perf  libstdc++.so.6.0.33  [.] std::basic_filebuf<char, std::char_traits<char> >::open(char const*, std::_Ios_Openmode)
+            |
+            ---std::basic_filebuf<char, std::char_traits<char> >::open(char const*, std::_Ios_Openmode)
+               std::__basic_file<char>::open(char const*, std::_Ios_Openmode, int)
+               0xede0676afcdc
+               _IO_file_fopen
+               _IO_file_open
+               open64
+               el0t_64_sync
+               el0t_64_sync_handler
+               el0_svc
+               do_el0_svc
+               el0_svc_common.constprop.0
+               invoke_syscall
+               __arm64_sys_openat
+               do_sys_openat2
+               do_filp_open
+               path_openat
+               do_open
+               handle_truncate
+               do_truncate
+               notify_change
+               ext4_setattr
+               truncate_pagecache
+               truncate_inode_pages_range
+               find_lock_entries
+
+     1.66%     0.00%  ntt_perf  libstdc++.so.6.0.33  [.] std::__basic_file<char>::open(char const*, std::_Ios_Openmode, int)
+            |
+            ---std::__basic_file<char>::open(char const*, std::_Ios_Openmode, int)
+               0xede0676afcdc
+               _IO_file_fopen
+               _IO_file_open
+               open64
+               el0t_64_sync
+               el0t_64_sync_handler
+               el0_svc
+               do_el0_svc
+               el0_svc_common.constprop.0
+               invoke_syscall
+               __arm64_sys_openat
+               do_sys_openat2
+               do_filp_open
+               path_openat
+               do_open
+               handle_truncate
+               do_truncate
+               notify_change
+               ext4_setattr
+               truncate_pagecache
+               truncate_inode_pages_range
+               find_lock_entries
+
+     1.66%     0.00%  ntt_perf  libc.so.6            [.] 0x0000ede0676afcdc
+            |
+            ---0xede0676afcdc
+               _IO_file_fopen
+               _IO_file_open
+               open64
+               el0t_64_sync
+               el0t_64_sync_handler
+               el0_svc
+               do_el0_svc
+               el0_svc_common.constprop.0
+               invoke_syscall
+               __arm64_sys_openat
+               do_sys_openat2
+               do_filp_open
+               path_openat
+               do_open
+               handle_truncate
+               do_truncate
+               notify_change
+               ext4_setattr
+               truncate_pagecache
+               truncate_inode_pages_range
+               find_lock_entries
+
+     1.66%     0.00%  ntt_perf  libc.so.6            [.] _IO_file_fopen
+            |
+            ---_IO_file_fopen
+               _IO_file_open
+               open64
+               el0t_64_sync
+               el0t_64_sync_handler
+               el0_svc
+               do_el0_svc
+               el0_svc_common.constprop.0
+               invoke_syscall
+               __arm64_sys_openat
+               do_sys_openat2
+               do_filp_open
+               path_openat
+               do_open
+               handle_truncate
+               do_truncate
+               notify_change
+               ext4_setattr
+               truncate_pagecache
+               truncate_inode_pages_range
+               find_lock_entries
+
+     1.66%     0.00%  ntt_perf  libc.so.6            [.] _IO_file_open
+            |
+            ---_IO_file_open
+               open64
+               el0t_64_sync
+               el0t_64_sync_handler
+               el0_svc
+               do_el0_svc
+               el0_svc_common.constprop.0
+               invoke_syscall
+               __arm64_sys_openat
+               do_sys_openat2
+               do_filp_open
+               path_openat
+               do_open
+               handle_truncate
+               do_truncate
+               notify_change
+               ext4_setattr
+               truncate_pagecache
+               truncate_inode_pages_range
+               find_lock_entries
+
+     1.66%     0.00%  ntt_perf  libc.so.6            [.] open64
+            |
+            ---open64
+               el0t_64_sync
+               el0t_64_sync_handler
+               el0_svc
+               do_el0_svc
+               el0_svc_common.constprop.0
+               invoke_syscall
+               __arm64_sys_openat
+               do_sys_openat2
+               do_filp_open
+               path_openat
+               do_open
+               handle_truncate
+               do_truncate
+               notify_change
+               ext4_setattr
+               truncate_pagecache
+               truncate_inode_pages_range
+               find_lock_entries
+
+     1.66%     0.00%  ntt_perf  [kernel.kallsyms]    [k] __arm64_sys_openat
+            |
+            ---__arm64_sys_openat
+               do_sys_openat2
+               do_filp_open
+               path_openat
+               do_open
+               handle_truncate
+               do_truncate
+               notify_change
+               ext4_setattr
+               truncate_pagecache
+               truncate_inode_pages_range
+               find_lock_entries
+
+     1.66%     0.00%  ntt_perf  [kernel.kallsyms]    [k] do_sys_openat2
+            |
+            ---do_sys_openat2
+               do_filp_open
+               path_openat
+               do_open
+               handle_truncate
+               do_truncate
+               notify_change
+               ext4_setattr
+               truncate_pagecache
+               truncate_inode_pages_range
+               find_lock_entries
+
+     1.66%     0.00%  ntt_perf  [kernel.kallsyms]    [k] do_filp_open
+            |
+            ---do_filp_open
+               path_openat
+               do_open
+               handle_truncate
+               do_truncate
+               notify_change
+               ext4_setattr
+               truncate_pagecache
+               truncate_inode_pages_range
+               find_lock_entries
+
+     1.66%     0.00%  ntt_perf  [kernel.kallsyms]    [k] path_openat
+            |
+            ---path_openat
+               do_open
+               handle_truncate
+               do_truncate
+               notify_change
+               ext4_setattr
+               truncate_pagecache
+               truncate_inode_pages_range
+               find_lock_entries
+
+     1.66%     0.00%  ntt_perf  [kernel.kallsyms]    [k] do_open
+            |
+            ---do_open
+               handle_truncate
+               do_truncate
+               notify_change
+               ext4_setattr
+               truncate_pagecache
+               truncate_inode_pages_range
+               find_lock_entries
+
+     1.66%     0.00%  ntt_perf  [kernel.kallsyms]    [k] handle_truncate
+            |
+            ---handle_truncate
+               do_truncate
+               notify_change
+               ext4_setattr
+               truncate_pagecache
+               truncate_inode_pages_range
+               find_lock_entries
+
+     1.66%     0.00%  ntt_perf  [kernel.kallsyms]    [k] do_truncate
+            |
+            ---do_truncate
+               notify_change
+               ext4_setattr
+               truncate_pagecache
+               truncate_inode_pages_range
+               find_lock_entries
+
+     1.66%     0.00%  ntt_perf  [kernel.kallsyms]    [k] notify_change
+            |
+            ---notify_change
+               ext4_setattr
+               truncate_pagecache
+               truncate_inode_pages_range
+               find_lock_entries
+
+     1.66%     0.00%  ntt_perf  [kernel.kallsyms]    [k] ext4_setattr
+            |
+            ---ext4_setattr
+               truncate_pagecache
+               truncate_inode_pages_range
+               find_lock_entries
+
+     1.66%     0.00%  ntt_perf  [kernel.kallsyms]    [k] truncate_pagecache
+            |
+            ---truncate_pagecache
+               truncate_inode_pages_range
+               find_lock_entries
+
+     1.66%     0.00%  ntt_perf  [kernel.kallsyms]    [k] truncate_inode_pages_range
+            |
+            ---truncate_inode_pages_range
+               find_lock_entries
+
+     1.64%     1.64%  ntt_perf  [kernel.kallsyms]    [k] __pi_clear_page
+            |
+            ---_start
+               __libc_start_main
+               0xede0676684c4
+               main
+               fWrite(int*, int, int)
+               std::ostream& std::ostream::_M_insert<long>(long)
+               std::ostreambuf_iterator<char, std::char_traits<char> > std::num_put<char, std::ostreambuf_iterator<char, std::char_traits<char> > >::_M_insert_int<long>(std::ostreambuf_iterator<char, std::char_traits<char> >, std::ios_base&, char, long) const
+               std::basic_filebuf<char, std::char_traits<char> >::xsputn(char const*, long)
+               std::__basic_file<char>::xsputn_2(char const*, long, char const*, long)
+               writev
+               el0t_64_sync
+               el0t_64_sync_handler
+               el0_svc
+               do_el0_svc
+               el0_svc_common.constprop.0
+               invoke_syscall
+               __arm64_sys_writev
+               do_writev
+               vfs_writev
+               do_iter_readv_writev
+               ext4_file_write_iter
+               ext4_buffered_write_iter
+               generic_perform_write
+               ext4_da_write_begin
+               __filemap_get_folio
+               filemap_alloc_folio
+               folio_alloc
+               alloc_pages
+               alloc_pages_mpol
+               __alloc_pages
+               get_page_from_freelist
+               __pi_clear_page
+
+     1.64%     0.00%  ntt_perf  [kernel.kallsyms]    [k] alloc_pages_mpol
+            |
+            ---alloc_pages_mpol
+               __alloc_pages
+               get_page_from_freelist
+               __pi_clear_page
+
+     1.64%     0.00%  ntt_perf  [kernel.kallsyms]    [k] __alloc_pages
+            |
+            ---__alloc_pages
+               get_page_from_freelist
+               __pi_clear_page
+
+     1.64%     0.00%  ntt_perf  [kernel.kallsyms]    [k] get_page_from_freelist
+            |
+            ---get_page_from_freelist
+               __pi_clear_page
+
+     1.52%     1.52%  ntt_perf  libstdc++.so.6.0.33  [.] memcpy@plt
+            |
+            ---_start
+               __libc_start_main
+               0xede0676684c4
+               main
+               fWrite(int*, int, int)
+               std::ostream& std::ostream::_M_insert<long>(long)
+               std::ostreambuf_iterator<char, std::char_traits<char> > std::num_put<char, std::ostreambuf_iterator<char, std::char_traits<char> > >::_M_insert_int<long>(std::ostreambuf_iterator<char, std::char_traits<char> >, std::ios_base&, char, long) const
+               std::basic_streambuf<char, std::char_traits<char> >::xsputn(char const*, long)
+               memcpy@plt
+
+     1.52%     0.00%  ntt_perf  libstdc++.so.6.0.33  [.] std::basic_streambuf<char, std::char_traits<char> >::xsputn(char const*, long)
+            |
+            ---std::basic_streambuf<char, std::char_traits<char> >::xsputn(char const*, long)
+               memcpy@plt
+
+     1.50%     1.50%  ntt_perf  libstdc++.so.6.0.33  [.] 0x00000000001443c0
+            |
+            ---_start
+               __libc_start_main
+               0xede0676684c4
+               main
+               fWrite(int*, int, int)
+               std::ostream& std::ostream::_M_insert<long>(long)
+               std::ostreambuf_iterator<char, std::char_traits<char> > std::num_put<char, std::ostreambuf_iterator<char, std::char_traits<char> > >::_M_insert_int<long>(std::ostreambuf_iterator<char, std::char_traits<char> >, std::ios_base&, char, long) const
+               0xede0679443c0
+
+     1.50%     0.00%  ntt_perf  libstdc++.so.6.0.33  [.] 0x0000ede0679443c0
+            |
+            ---0xede0679443c0
+
+     1.35%     1.35%  ntt_perf  libstdc++.so.6.0.33  [.] 0x000000000013f878
+            |
+            ---_start
+               __libc_start_main
+               0xede0676684c4
+               main
+               fRead(int*, int*, int*, int*, int)
+               std::istream::operator>>(int&)
+               std::istreambuf_iterator<char, std::char_traits<char> > std::num_get<char, std::istreambuf_iterator<char, std::char_traits<char> > >::_M_extract_int<long>(std::istreambuf_iterator<char, std::char_traits<char> >, std::istreambuf_iterator<char, std::char_traits<char> >, std::ios_base&, std::_Ios_Iostate&, long&) const
+               0xede06793f863
+               0xede06793f878
+
+     1.35%     0.00%  ntt_perf  libstdc++.so.6.0.33  [.] 0x0000ede06793f863
+            |
+            ---0xede06793f863
+               0xede06793f878
+
+     1.35%     0.00%  ntt_perf  libstdc++.so.6.0.33  [.] 0x0000ede06793f878
+            |
+            ---0xede06793f878
+
+     1.18%     1.18%  ntt_perf  [kernel.kallsyms]    [k] generic_write_checks
+            |
+            ---_start
+               __libc_start_main
+               0xede0676684c4
+               main
+               fWrite(int*, int, int)
+               std::ostream& std::ostream::_M_insert<long>(long)
+               std::ostreambuf_iterator<char, std::char_traits<char> > std::num_put<char, std::ostreambuf_iterator<char, std::char_traits<char> > >::_M_insert_int<long>(std::ostreambuf_iterator<char, std::char_traits<char> >, std::ios_base&, char, long) const
+               std::basic_filebuf<char, std::char_traits<char> >::xsputn(char const*, long)
+               std::__basic_file<char>::xsputn_2(char const*, long, char const*, long)
+               writev
+               el0t_64_sync
+               el0t_64_sync_handler
+               el0_svc
+               do_el0_svc
+               el0_svc_common.constprop.0
+               invoke_syscall
+               __arm64_sys_writev
+               do_writev
+               vfs_writev
+               do_iter_readv_writev
+               ext4_file_write_iter
+               ext4_buffered_write_iter
+               ext4_generic_write_checks
+               generic_write_checks
+
+     1.18%     0.00%  ntt_perf  [kernel.kallsyms]    [k] ext4_generic_write_checks
+            |
+            ---ext4_generic_write_checks
+               generic_write_checks
+
+     1.00%     1.00%  ntt_perf  [kernel.kallsyms]    [k] acct_collect
+            |
+            ---_start
+               __libc_start_main
+               0xede0676684c8
+               0xede06767f30c
+               0xede06767f1f8
+               _exit
+               el0t_64_sync
+               el0t_64_sync_handler
+               el0_svc
+               do_el0_svc
+               el0_svc_common.constprop.0
+               invoke_syscall
+               __arm64_sys_exit_group
+               do_group_exit
+               do_exit
+               acct_collect
+
+     1.00%     0.00%  ntt_perf  libc.so.6            [.] 0x0000ede0676684c8
+            |
+            ---0xede0676684c8
+               0xede06767f30c
+               0xede06767f1f8
+               _exit
+               el0t_64_sync
+               el0t_64_sync_handler
+               el0_svc
+               do_el0_svc
+               el0_svc_common.constprop.0
+               invoke_syscall
+               __arm64_sys_exit_group
+               do_group_exit
+               do_exit
+               acct_collect
+
+     1.00%     0.00%  ntt_perf  libc.so.6            [.] 0x0000ede06767f30c
+            |
+            ---0xede06767f30c
+               0xede06767f1f8
+               _exit
+               el0t_64_sync
+               el0t_64_sync_handler
+               el0_svc
+               do_el0_svc
+               el0_svc_common.constprop.0
+               invoke_syscall
+               __arm64_sys_exit_group
+               do_group_exit
+               do_exit
+               acct_collect
+
+     1.00%     0.00%  ntt_perf  libc.so.6            [.] 0x0000ede06767f1f8
+            |
+            ---0xede06767f1f8
+               _exit
+               el0t_64_sync
+               el0t_64_sync_handler
+               el0_svc
+               do_el0_svc
+               el0_svc_common.constprop.0
+               invoke_syscall
+               __arm64_sys_exit_group
+               do_group_exit
+               do_exit
+               acct_collect
+
+     1.00%     0.00%  ntt_perf  libc.so.6            [.] _exit
+            |
+            ---_exit
+               el0t_64_sync
+               el0t_64_sync_handler
+               el0_svc
+               do_el0_svc
+               el0_svc_common.constprop.0
+               invoke_syscall
+               __arm64_sys_exit_group
+               do_group_exit
+               do_exit
+               acct_collect
+
+     1.00%     0.00%  ntt_perf  [kernel.kallsyms]    [k] __arm64_sys_exit_group
+            |
+            ---__arm64_sys_exit_group
+               do_group_exit
+               do_exit
+               acct_collect
+
+     1.00%     0.00%  ntt_perf  [kernel.kallsyms]    [k] do_group_exit
+            |
+            ---do_group_exit
+               do_exit
+               acct_collect
+
+     1.00%     0.00%  ntt_perf  [kernel.kallsyms]    [k] do_exit
+            |
+            ---do_exit
+               acct_collect
+
+     0.01%     0.01%  ntt_perf  [kernel.kallsyms]    [k] process_measurement
+     0.01%     0.00%  ntt_perf  [unknown]            [k] 0x0000e6db33cfe057
+     0.01%     0.00%  ntt_perf  [unknown]            [k] 0x0000e6db33cfde0c
+     0.01%     0.00%  ntt_perf  [kernel.kallsyms]    [k] __arm64_sys_execve
+     0.01%     0.00%  ntt_perf  [kernel.kallsyms]    [k] do_execveat_common.isra.0
+     0.01%     0.00%  ntt_perf  [kernel.kallsyms]    [k] bprm_execve
+     0.01%     0.00%  ntt_perf  [kernel.kallsyms]    [k] bprm_execve.part.0
+     0.01%     0.00%  ntt_perf  [kernel.kallsyms]    [k] exec_binprm
+     0.01%     0.00%  ntt_perf  [kernel.kallsyms]    [k] search_binary_handler
+     0.01%     0.00%  ntt_perf  [kernel.kallsyms]    [k] load_elf_binary
+     0.01%     0.00%  ntt_perf  [kernel.kallsyms]    [k] load_elf_interp
+     0.01%     0.00%  ntt_perf  [kernel.kallsyms]    [k] elf_load
+     0.01%     0.00%  ntt_perf  [kernel.kallsyms]    [k] vm_mmap
+     0.01%     0.00%  ntt_perf  [kernel.kallsyms]    [k] vm_mmap_pgoff
+     0.01%     0.00%  ntt_perf  [kernel.kallsyms]    [k] security_mmap_file
+     0.01%     0.00%  ntt_perf  [kernel.kallsyms]    [k] ima_file_mmap
+     0.00%     0.00%  perf-exe  [kernel.kallsyms]    [k] perf_event_enable_on_exec
+     0.00%     0.00%  perf-exe  [unknown]            [k] 0x0000e6db33cfde0c
+     0.00%     0.00%  perf-exe  [kernel.kallsyms]    [k] el0t_64_sync
+     0.00%     0.00%  perf-exe  [kernel.kallsyms]    [k] el0t_64_sync_handler
+     0.00%     0.00%  perf-exe  [kernel.kallsyms]    [k] el0_svc
+     0.00%     0.00%  perf-exe  [kernel.kallsyms]    [k] do_el0_svc
+     0.00%     0.00%  perf-exe  [kernel.kallsyms]    [k] el0_svc_common.constprop.0
+     0.00%     0.00%  perf-exe  [kernel.kallsyms]    [k] invoke_syscall
+     0.00%     0.00%  perf-exe  [kernel.kallsyms]    [k] __arm64_sys_execve
+     0.00%     0.00%  perf-exe  [kernel.kallsyms]    [k] do_execveat_common.isra.0
+     0.00%     0.00%  perf-exe  [kernel.kallsyms]    [k] bprm_execve
+     0.00%     0.00%  perf-exe  [kernel.kallsyms]    [k] bprm_execve.part.0
+     0.00%     0.00%  perf-exe  [kernel.kallsyms]    [k] exec_binprm
+     0.00%     0.00%  perf-exe  [kernel.kallsyms]    [k] search_binary_handler
+     0.00%     0.00%  perf-exe  [kernel.kallsyms]    [k] load_elf_binary
+     0.00%     0.00%  perf-exe  [kernel.kallsyms]    [k] begin_new_exec
+     0.00%     0.00%  perf-exe  [kernel.kallsyms]    [k] perf_event_exec
+
+
+#
+# (Cannot load tips.txt file, please install perf!)
+#
