@@ -63,6 +63,10 @@ for i in "${!algorithms[@]}"; do
         echo "编译失败，跳过此算法"
         continue
     fi
+    # 在perf分析之前添加以下代码，保存程序输出
+    echo "运行程序并保存输出..."
+    ./$OUTPUT > "perf_results/${name}_output.txt" 2>&1
+    
     
     # 使用perf进行性能分析
     echo "运行perf分析..."
