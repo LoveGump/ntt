@@ -1298,14 +1298,14 @@ int main(int argc, char *argv[])
         // NTT_multiply_base4_(a, b, ab, n_, p_);
         // ntt使用基4 - 蒙哥马利模乘的版本
         // NTT_multiply_base4(a, b, ab, n_, p_);
-        NTT_multiply_base4_m(a, b, ab, n_, p_);
+        // NTT_multiply_base4_m(a, b, ab, n_, p_);
         // NTT_multiply_base4_NEON(a, b, ab, n_, p_);
         // ntt 使用基4 - 蒙哥马利域的版本
         // NTT_multiply_base4_Montgomery(a, b, ab, n_, p_);
         // 小于32位优化的蒙哥马利域基4 NTT
         // NTT_multiply_base4_Montgomery_domain(a, b, ab, n_, p_);
         // NTT_multiply_base4_Montgomery32(a, b, ab, n_, p_);
-        // NTT_multiply_base4_Montgomery32neon(a, b, ab, n_, p_);
+         NTT_multiply_base4_Montgomery32neon(a, b, ab, n_, p_);
 
         auto End = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double,std::ratio<1,1000>>elapsed = End - Start;
