@@ -1,6 +1,6 @@
 #pragma once
-#include <stdint.h>
 #include <stdexcept>
+#include <stdint.h>
 
 // Montgomery乘法类
 class Montgomery {
@@ -12,22 +12,23 @@ class Montgomery {
     uint64_t R2;        // R² mod N
     uint64_t R_mon_N;
 
-        // 幂取模
+    // 幂取模
     static uint64_t pow(uint64_t base, uint64_t exp, uint64_t mod) {
         uint64_t res = 1;
         base %= mod;
         while (exp > 0) {
             if (exp & 1) {
-                res =   res * base % mod;
+                res = res * base % mod;
             }
-            base =   base * base % mod;
+            base = base * base % mod;
             exp >>= 1;
         }
         return res;
     }
 
     // 扩展欧几里得算法求模逆元u
-    static uint64_t extendedGCD(uint64_t a, uint64_t b, uint64_t &x, uint64_t &y) {
+    static uint64_t extendedGCD(uint64_t a, uint64_t b, uint64_t &x,
+                                uint64_t &y) {
         if (a == 0) {
             x = 0;
             y = 1;
@@ -40,20 +41,18 @@ class Montgomery {
         return gcd;
     }
 
-     // 计算模逆元 a⁻¹ mod m
+    // 计算模逆元 a⁻¹ mod m
     static uint64_t modinv(uint64_t a, uint64_t m) {
         uint64_t x, y;
         uint64_t gcd = extendedGCD(a, m, x, y);
-        
-        
+
         return (x < 0) ? x + m : x;
     }
-
 
   public:
     // 构造函数
     Montgomery(uint64_t N) : N(N) {
-       
+
         // 计算R为大于N的最小2^k
         this->logR = 32;          // 使用32位整数
         this->R = (1ULL << logR); // R = 2^32
