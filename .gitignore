@@ -11,6 +11,8 @@
 !*.h
 !*.in
 !*.out
+
+
 # 允许 .gitignore 本身
 !.gitignore
 
@@ -23,7 +25,6 @@
 *.a
 *.so
 *.exe
-*.out
 *.app
 
 # 忽略编辑器和IDE生成的临时文件
