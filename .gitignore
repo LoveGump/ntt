@@ -1,0 +1,36 @@
+# 首先忽略所有文件
+*
+
+# 然后仅包含这些文件夹
+!nttdata/
+!files/
+
+# 允许这些源代码文件类型
+!*.cc
+!*.cpp
+!*.h
+
+# 允许 .gitignore 本身
+!.gitignore
+
+# 如果在子目录中，确保这些规则也能适用
+!*/
+
+# 忽略编译生成的文件
+*.o
+*.obj
+*.a
+*.so
+*.exe
+*.out
+*.app
+
+# 忽略编辑器和IDE生成的临时文件
+*.swp
+*.swo
+*~
+.DS_Store
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
