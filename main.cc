@@ -10,7 +10,7 @@
 #include <complex>
 #include <algorithm>
 #include <arm_neon.h>
-#include "Mentgomery.h"
+#include "Montgomery.h"
 #include "Mentgomery32.h"
 
 // 可以自行添加需要的头文件
@@ -1272,7 +1272,7 @@ int main(int argc, char *argv[])
 {
     
     // 保证输入的所有模数的原根均为 3, 且模数都能表示为 a \times 4 ^ k + 1 的形式
-    // 输入模数分别为 7340033 104857601 469762049 263882790666241
+    // 输入模数分别为 7340033 104857601 469762049 1337006139375617
     // 第四个模数超过了整型表示范围, 如果实现此模数意义下的多项式乘法需要修改框架
     // 对第四个模数的输入数据不做必要要求, 如果要自行探索大模数 NTT, 请在完成前三个模数的基础代码及优化后实现大模数 NTT
     // 输入文件共五个, 第一个输入文件 n = 4, 其余四个文件分别对应四个模数, n = 131072
@@ -1286,16 +1286,15 @@ int main(int argc, char *argv[])
         memset(ab, 0, sizeof(ab));
         auto Start = std::chrono::high_resolution_clock::now();
         // TODO : 将 poly_multiply 函数替换成你写的 ntt
-        // poly_multiply(a, b, ab, n_, p_);
+        poly_multiply(a, b, ab, n_, p_);
         // FFT_multiply(a, b, ab, n_, p_);
         // ntt 初始版本
-        // NTT_multiply(a, b, ab, n_, p_);
+         NTT_multiply(a, b, ab, n_, p_);
         // ntt 使用蒙哥马利 模乘 的版本
         // NTT_multiply_Montgomery(a, b, ab, n_, p_);
         // ntt使用蒙哥马利 域 的版本
         // NTT_multiply_Montgomerybase2(a, b, ab, n_, p_);
 
-<<<<<<< HEAD
         // NTT_multiply_base4_(a, b, ab, n_, p_);
         // ntt使用基4 - 蒙哥马利模乘的版本
         // NTT_multiply_base4(a, b, ab, n_, p_);
@@ -1306,18 +1305,7 @@ int main(int argc, char *argv[])
         // 小于32位优化的蒙哥马利域基4 NTT
         // NTT_multiply_base4_Montgomery_domain(a, b, ab, n_, p_);
         // NTT_multiply_base4_Montgomery32(a, b, ab, n_, p_);
-         NTT_multiply_base4_Montgomery32neon(a, b, ab, n_, p_);
-=======
-        // ntt 使用基4的版本
-        //  NTT_multiply_base4_Naive(a, b, ab, n_, p_);
-        // ntt 使用基4 模乘
-        // NTT_multiply_base4_m(a, b, ab, n_, p_);
-        // ntt 使用基4蒙哥马利域
-        //  NTT_multiply_base4_Montgomery_domain(a, b, ab, n_, p_);
-
-        // ntt 使用基4蒙哥马利域的neon版本
         // NTT_multiply_base4_Montgomery32neon(a, b, ab, n_, p_);
->>>>>>> ffae2a4630b4e67ef423a37ba1c2ffc32762f02d
 
         auto End = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double,std::ratio<1,1000>>elapsed = End - Start;
