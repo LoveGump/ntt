@@ -9,7 +9,8 @@
 !*.cc
 !*.cpp
 !*.h
-
+!*.in
+!*.out
 # 允许 .gitignore 本身
 !.gitignore
 
