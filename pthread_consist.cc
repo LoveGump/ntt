@@ -96,8 +96,6 @@ enum TaskType {
     TASK_MULTIPLY,    // 多项式点值乘法
     TASK_APPLY_INV_N, // 应用逆元
     TASK_CRT_COMBINE, // CRT合并
-    TASK_COPY_DATA,   // 新增：数据复制任务
-    TASK_COPY_RESULT, // 新增：结果复制任务
     TASK_EXIT         // 退出任务
 };
 
@@ -140,21 +138,15 @@ struct GlobalTaskState {
 } task_state;
 
 // 预分配内存池，避免重复动态分配
-constexpr int MAX_LEN = 1 << 18; // 根据最大处理规模设置
+constexpr int MAX_LEN = 1 << 22; // 根据最大处理规模设置
 uint64_t fa_pool[MAX_LEN];
 uint64_t fb_pool[MAX_LEN];
-
+int rev_pool[MAX_LEN];
 // 位逆序置换函数
 void parallel_reverse(uint64_t *a, int n, int bit) {
     // 分配并初始化逆序表
-    task_state.rev = new int[n];
-    task_state.rev[0] = 0;
+    task_state.rev = rev_pool;
 
-    // 计算逆序表
-    for (int i = 0; i < n; i++) {
-        task_state.rev[i] =
-            (task_state.rev[i >> 1] >> 1) | ((i & 1) << (bit - 1));
-    }
 
     // 设置逆序置换任务参数
     task_state.current_task = TASK_REVERSE;
@@ -168,8 +160,7 @@ void parallel_reverse(uint64_t *a, int n, int bit) {
     // 等待所有线程完成
     pthread_barrier_wait(&barrier);
 
-    // 清理逆序表
-    delete[] task_state.rev;
+  
 }
 
 // 工作线程函数
@@ -281,38 +272,6 @@ void *worker_thread(void *arg) {
         case TASK_EXIT:
             return NULL; // 退出任务
             break;
-        case TASK_COPY_DATA: {
-            // 转入蒙哥马利
-            uint64_t *a = task_state.a;      // 源数组A
-            uint64_t *b = task_state.b;      // 源数组B
-            uint64_t *fa = task_state.dst_a; // 目标数组A
-            uint64_t *fb = task_state.dst_b; // 目标数组B
-            int n = task_state.src_n;        // 源数组长度
-            int len = task_state.dst_len;    // 目标数组长度
-
-            // 每个线程复制一部分源数据
-            for (int i = thread_id; i < n; i += NUM_THREADS) {
-                fa[i] = a[i];
-                fb[i] = b[i];
-            }
-
-            // 每个线程填充一部分零
-            for (int i = n + thread_id; i < len; i += NUM_THREADS) {
-                fa[i] = fb[i] = 0;
-            }
-            break;
-        }
-        case TASK_COPY_RESULT: {
-            uint64_t *src = task_state.a;      // 源数组
-            uint64_t *dst = task_state.result; // 目标数组
-            int len = task_state.n;            // 数组长度
-
-            // 每个线程复制一部分结果
-            for (int i = thread_id; i < len; i += NUM_THREADS) {
-                dst[i] = src[i];
-            }
-            break;
-        }
         default:
             break;
         }
@@ -326,8 +285,7 @@ void *worker_thread(void *arg) {
 // 使用持久线程的NTT实现
 void NTT_persistent(uint64_t *a, int n, bool invert, uint64_t p, int bit,
                     int g = 3) {
-    // 位逆序置换
-    parallel_reverse(a, n, bit);
+    
 
     // 设置基本任务参数
     task_state.a = a;
@@ -373,21 +331,6 @@ void NTT_multiply_persistent(uint64_t *a, uint64_t *b, uint64_t *result, int n,
     uint64_t *fa = fa_pool;
     uint64_t *fb = fb_pool;
 
-    // // 并行复制输入数组并填充0
-    //  // 设置复制任务参数
-    // task_state.current_task = TASK_COPY_DATA;
-    // task_state.a = a;
-    // task_state.b = b;
-    // task_state.dst_a = fa_pool;
-    // task_state.dst_b = fb_pool;
-    // task_state.src_n = n;
-    // task_state.dst_len = len;
-
-    // // 唤醒工作线程执行复制任务
-    // pthread_barrier_wait(&barrier);
-
-    // // 等待所有线程完成
-    // pthread_barrier_wait(&barrier);
     for (int i = 0; i < n; i++) {
         fa[i] = a[i];
         fb[i] = b[i];
@@ -402,6 +345,17 @@ void NTT_multiply_persistent(uint64_t *a, uint64_t *b, uint64_t *result, int n,
         bit++;
 
     // 正向NTT
+    auto rev = rev_pool;
+    rev[0] = 0;
+
+    // 计算逆序表
+    for (int i = 0; i < len; i++) {
+        rev[i] = (rev[i >> 1] >> 1) | ((i & 1) << (bit - 1));
+    }
+    // 位逆序置换
+    parallel_reverse(fa, len, bit);
+    // 位逆序置换
+    parallel_reverse(fb, len, bit);
     NTT_persistent(fa, len, false, p, bit);
     NTT_persistent(fb, len, false, p, bit);
 
@@ -419,23 +373,14 @@ void NTT_multiply_persistent(uint64_t *a, uint64_t *b, uint64_t *result, int n,
     pthread_barrier_wait(&barrier);
 
     // 逆向NTT
+    // 位逆序置换
+    parallel_reverse(fa, len, bit);
     NTT_persistent(fa, len, true, p, bit);
 
     // 复制结果
     for (int i = 0; i < len; i++) {
         result[i] = fa[i];
     }
-    //     // 设置复制任务参数
-    // task_state.current_task = TASK_COPY_RESULT;
-    // task_state.a = fa;
-    // task_state.result = result;
-    // task_state.n = len;
-
-    // // 唤醒工作线程执行复制任务
-    // pthread_barrier_wait(&barrier);
-
-    // // 等待所有线程完成
-    // pthread_barrier_wait(&barrier);
 }
 
 // 使用CRT和持久线程的多项式乘法

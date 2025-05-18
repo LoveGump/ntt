@@ -90,6 +90,7 @@ uint64_t pow(uint64_t base, uint64_t exp, uint64_t mod) {
 pthread_barrier_t barrier; // 屏障
 std::atomic<bool> thread_exit(false);
 
+
 // 任务类型枚举
 enum TaskType {
     TASK_REVERSE,     // 位逆序置换任务
@@ -142,21 +143,16 @@ struct GlobalTaskState {
 } task_state;
 
 // 预分配内存池，避免重复动态分配
-constexpr int MAX_LEN = 1 << 18; // 根据最大处理规模设置
+constexpr int MAX_LEN = 1 << 22; // 根据最大处理规模设置
 uint64_t fa_pool[MAX_LEN];
 uint64_t fb_pool[MAX_LEN];
-
+int rev_pool[MAX_LEN];
 // 位逆序置换函数
 void parallel_reverse(uint64_t *a, int n, int bit) {
-    // 分配并初始化逆序表
-    task_state.rev = new int[n];
-    task_state.rev[0] = 0;
-
-    // 计算逆序表
-    for (int i = 0; i < n; i++) {
-        task_state.rev[i] =
-            (task_state.rev[i >> 1] >> 1) | ((i & 1) << (bit - 1));
-    }
+    
+    
+    task_state.rev = rev_pool;
+    
 
     // 设置逆序置换任务参数
     task_state.current_task = TASK_REVERSE;
@@ -170,8 +166,7 @@ void parallel_reverse(uint64_t *a, int n, int bit) {
     // 等待所有线程完成
     pthread_barrier_wait(&barrier);
 
-    // 清理逆序表
-    delete[] task_state.rev;
+
 }
 
 // 工作线程函数
@@ -194,8 +189,10 @@ void *worker_thread(void *arg) {
             // 每个线程处理一部分逆序置换
             for (int i = thread_id; i < n; i += NUM_THREADS) {
                 if (i < rev[i]) {
-                    // 交换元素
-                    std::swap(a[i], a[rev[i]]);
+                    // 使用异或进行就地交换，避免临时变量
+                    a[i] ^= a[rev[i]];
+                    a[rev[i]] ^= a[i];
+                    a[i] ^= a[rev[i]];
                 }
             }
             break;
@@ -208,6 +205,7 @@ void *worker_thread(void *arg) {
             int n = task_state.n;
             Montgomery *m = task_state.montgomery;
             int step = len >> 1;
+
             // 每个线程处理一部分块
             for (int i = thread_id * len; i < n; i += len * NUM_THREADS) {
                 uint64_t g = m->R_mon_N; // 初始单位根为1
@@ -333,11 +331,10 @@ void *worker_thread(void *arg) {
     return NULL;
 }
 
-// 使用持久线程的NTT实现
+// 使用持久线程
 void NTT_persistent(uint64_t *a, int n, bool invert, uint64_t p, int bit,
                     int g = 3) {
-    // 位逆序置换
-    parallel_reverse(a, n, bit);
+    
 
     // 设置基本任务参数
     task_state.a = a;
@@ -373,7 +370,7 @@ void NTT_persistent(uint64_t *a, int n, bool invert, uint64_t p, int bit,
     }
 }
 
-// 使用持久线程的多项式乘法
+
 void NTT_multiply_persistent(uint64_t *a, uint64_t *b, uint64_t *result, int n,
                              uint64_t p, pthread_t *threads) {
     // 计算可以容纳结果的2的幂次长度
@@ -383,21 +380,7 @@ void NTT_multiply_persistent(uint64_t *a, uint64_t *b, uint64_t *result, int n,
     uint64_t *fa = fa_pool;
     uint64_t *fb = fb_pool;
     auto m = task_state.montgomery;
-    // // 并行复制输入数组并填充0
-    //  // 设置复制任务参数
-    // task_state.current_task = TASK_COPY_DATA;
-    // task_state.a = a;
-    // task_state.b = b;
-    // task_state.dst_a = fa_pool;
-    // task_state.dst_b = fb_pool;
-    // task_state.src_n = n;
-    // task_state.dst_len = len;
 
-    // // 唤醒工作线程执行复制任务
-    // pthread_barrier_wait(&barrier);
-
-    // // 等待所有线程完成
-    // pthread_barrier_wait(&barrier);
     for (int i = 0; i < n; i++) {
         fa[i] = m->REDC(a[i] * m->R2);
         fb[i] = m->REDC(b[i] * m->R2);
@@ -406,10 +389,24 @@ void NTT_multiply_persistent(uint64_t *a, uint64_t *b, uint64_t *result, int n,
         fa[i] = fb[i] = 0;
     }
 
-    // 计算二进制位数
+    // 计算长度的二进制位数
     int bit = 0;
-    while ((1 << bit) < len)
+    while ((1 << bit) < len) {
         bit++;
+    }
+    // 位逆序置换
+    // 分配并初始化逆序表
+    int *rev = rev_pool;
+    // 计算逆序表
+    rev[0] = 0;
+    for (int i = 0; i < len; i++) {
+        rev[i] =
+            (rev[i >> 1] >> 1) | ((i & 1) << (bit - 1));
+    }
+    parallel_reverse(fa, len, bit);
+    parallel_reverse(fb, len, bit);
+    
+    
 
     // 正向NTT
     NTT_persistent(fa, len, false, p, bit);
@@ -427,6 +424,9 @@ void NTT_multiply_persistent(uint64_t *a, uint64_t *b, uint64_t *result, int n,
 
     // 等待所有线程完成
     pthread_barrier_wait(&barrier);
+
+    // 逆序置换
+    parallel_reverse(fa, len, bit);
 
     // 逆向NTT
     NTT_persistent(fa, len, true, p, bit);

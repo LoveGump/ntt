@@ -11,7 +11,7 @@
 !*.h
 !*.in
 !*.out
-
+!*.sh
 
 # 允许 .gitignore 本身
 !.gitignore
