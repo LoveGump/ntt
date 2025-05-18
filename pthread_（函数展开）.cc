@@ -1,3 +1,6 @@
+#include <pthread.h>
+#include <sys/time.h>
+
 #include <algorithm>
 #include <atomic>
 #include <chrono>
@@ -7,9 +10,7 @@
 #include <fstream>
 #include <iomanip>
 #include <iostream>
-#include <pthread.h>
 #include <string>
-#include <sys/time.h>
 
 #define NUM_THREADS 8
 
@@ -86,19 +87,19 @@ uint64_t pow(uint64_t base, uint64_t exp, uint64_t mod) {
 }
 
 // 全局变量和屏障
-pthread_barrier_t barrier; // 屏障
+pthread_barrier_t barrier;  // 屏障
 std::atomic<bool> thread_exit(false);
 
 // 任务类型枚举
 enum TaskType {
-    TASK_REVERSE,     // 位逆序置换任务
-    TASK_NTT,         // NTT任务
-    TASK_MULTIPLY,    // 多项式点值乘法
-    TASK_APPLY_INV_N, // 应用逆元
-    TASK_CRT_COMBINE, // CRT合并
-    TASK_COPY_DATA,   // 新增：数据复制任务
-    TASK_COPY_RESULT, // 新增：结果复制任务
-    TASK_EXIT         // 退出任务
+    TASK_REVERSE,      // 位逆序置换任务
+    TASK_NTT,          // NTT任务
+    TASK_MULTIPLY,     // 多项式点值乘法
+    TASK_APPLY_INV_N,  // 应用逆元
+    TASK_CRT_COMBINE,  // CRT合并
+    TASK_COPY_DATA,    // 新增：数据复制任务
+    TASK_COPY_RESULT,  // 新增：结果复制任务
+    TASK_EXIT          // 退出任务
 };
 
 // 全局共享任务状态
@@ -106,54 +107,51 @@ struct GlobalTaskState {
     TaskType current_task;
 
     // 通用参数
-    uint64_t *a;      // 输入多项式A
-    uint64_t *b;      // 输入多项式B
-    uint64_t *result; // 结果数组
+    uint64_t *a;       // 输入多项式A
+    uint64_t *b;       // 输入多项式B
+    uint64_t *result;  // 结果数组
 
-    int n;       // 多项式长度
-    uint64_t p;  // 模数
-    int g = 3;   // 原根
-    bool invert; // 是否进行逆变换
+    int n;        // 多项式长度
+    uint64_t p;   // 模数
+    int g = 3;    // 原根
+    bool invert;  // 是否进行逆变换
 
     // NTT任务参数
-    int current_len; // 当前蝶形长度
-    uint64_t g_n;    // 当前单位根
+    int current_len;  // 当前蝶形长度
+    uint64_t g_n;     // 当前单位根
 
     // 逆序置换参数
-    int bit;  // 二进制位数
-    int *rev; // 逆序表
+    int bit;   // 二进制位数
+    int *rev;  // 逆序表
 
     // 逆元相关
-    uint64_t inv_n; // n的逆元
+    uint64_t inv_n;  // n的逆元
 
     // CRT相关
-    uint64_t **mod_results; // 各模数下的结果
-    uint64_t *mod_list;     // 模数列表
-    int mod_count;          // 模数个数
-    int mod_index;          // 当前处理的模数索引
+    uint64_t **mod_results;  // 各模数下的结果
+    uint64_t *mod_list;      // 模数列表
+    int mod_count;           // 模数个数
+    int mod_index;           // 当前处理的模数索引
 
     // 数据复制任务参数
-    uint64_t *dst_a; // 目标数组A
-    uint64_t *dst_b; // 目标数组B
-    int src_n;       // 源数组长度
-    int dst_len;     // 目标数组长度(包括填充部分)
+    uint64_t *dst_a;  // 目标数组A
+    uint64_t *dst_b;  // 目标数组B
+    int src_n;        // 源数组长度
+    int dst_len;      // 目标数组长度(包括填充部分)
 } task_state;
 
 // 预分配内存池，避免重复动态分配
-constexpr int MAX_LEN = 1 << 18; // 根据最大处理规模设置
+constexpr int MAX_LEN = 1 << 18;  // 根据最大处理规模设置
 uint64_t fa_pool[MAX_LEN];
 uint64_t fb_pool[MAX_LEN];
 int rev_pool[MAX_LEN];
 // 位逆序置换函数
-void parallel_reverse(uint64_t *a, int n, int bit) {
-    
-
-}
+void parallel_reverse(uint64_t *a, int n, int bit) {}
 
 // 工作线程函数
 void *worker_thread(void *arg) {
-    int thread_id = *((int *)arg); // 线程ID
-    delete (int *)arg;             // 释放分配的内存
+    int thread_id = *((int *)arg);  // 线程ID
+    delete (int *)arg;              // 释放分配的内存
 
     // 持久线程主循环
     while (!thread_exit.load(std::memory_order_acquire)) {
@@ -162,137 +160,137 @@ void *worker_thread(void *arg) {
 
         // 根据当前任务类型执行相应操作
         switch (task_state.current_task) {
-        case TASK_REVERSE: {
-            uint64_t *a = task_state.a;
-            int n = task_state.n;
-            int *rev = task_state.rev;
+            case TASK_REVERSE: {
+                uint64_t *a = task_state.a;
+                int n = task_state.n;
+                int *rev = task_state.rev;
 
-            // 每个线程处理一部分逆序置换
-            for (int i = thread_id; i < n; i += NUM_THREADS) {
-                if (i < rev[i]) {
-                    // 交换元素
-                    std::swap(a[i], a[rev[i]]);
+                // 每个线程处理一部分逆序置换
+                for (int i = thread_id; i < n; i += NUM_THREADS) {
+                    if (i < rev[i]) {
+                        // 交换元素
+                        std::swap(a[i], a[rev[i]]);
+                    }
                 }
+                break;
             }
-            break;
-        }
-        case TASK_NTT: {
-            uint64_t *a = task_state.a;
-            int len = task_state.current_len;
-            uint64_t p = task_state.p;
-            uint64_t g_n = task_state.g_n;
-            int n = task_state.n;
+            case TASK_NTT: {
+                uint64_t *a = task_state.a;
+                int len = task_state.current_len;
+                uint64_t p = task_state.p;
+                uint64_t g_n = task_state.g_n;
+                int n = task_state.n;
 
-            // 每个线程处理一部分块
-            for (int i = thread_id * len; i < n; i += len * NUM_THREADS) {
-                uint64_t g = 1; // 初始单位根为1
+                // 每个线程处理一部分块
+                for (int i = thread_id * len; i < n; i += len * NUM_THREADS) {
+                    uint64_t g = 1;  // 初始单位根为1
 
-                // 处理每个蝶形单元
-                for (int j = 0; j < len / 2; j++) {
-                    uint64_t u = a[i + j];
-                    uint64_t v = (a[i + j + len / 2] * g) % p;
+                    // 处理每个蝶形单元
+                    for (int j = 0; j < len / 2; j++) {
+                        uint64_t u = a[i + j];
+                        uint64_t v = (a[i + j + len / 2] * g) % p;
 
-                    a[i + j] = (u + v) % p;
-                    a[i + j + len / 2] = (u - v + p) % p;
+                        a[i + j] = (u + v) % p;
+                        a[i + j + len / 2] = (u - v + p) % p;
 
-                    g = (g * g_n) % p; // 更新单位根
+                        g = (g * g_n) % p;  // 更新单位根
+                    }
                 }
+                break;
             }
-            break;
-        }
-        case TASK_MULTIPLY: {
-            uint64_t *fa = task_state.a;
-            uint64_t *fb = task_state.b;
-            int len = task_state.n;
-            uint64_t p = task_state.p;
+            case TASK_MULTIPLY: {
+                uint64_t *fa = task_state.a;
+                uint64_t *fb = task_state.b;
+                int len = task_state.n;
+                uint64_t p = task_state.p;
 
-            // 每个线程处理一部分点值乘法
-            for (int i = thread_id; i < len; i += NUM_THREADS) {
-                fa[i] = (fa[i] * fb[i]) % p;
+                // 每个线程处理一部分点值乘法
+                for (int i = thread_id; i < len; i += NUM_THREADS) {
+                    fa[i] = (fa[i] * fb[i]) % p;
+                }
+                break;
             }
-            break;
-        }
-        case TASK_APPLY_INV_N: {
-            uint64_t *a = task_state.a;
-            int n = task_state.n;
-            uint64_t p = task_state.p;
-            uint64_t inv_n = task_state.inv_n;
+            case TASK_APPLY_INV_N: {
+                uint64_t *a = task_state.a;
+                int n = task_state.n;
+                uint64_t p = task_state.p;
+                uint64_t inv_n = task_state.inv_n;
 
-            // 每个线程处理一部分应用逆元
-            for (int i = thread_id; i < n; i += NUM_THREADS) {
-                a[i] = (a[i] * inv_n) % p;
+                // 每个线程处理一部分应用逆元
+                for (int i = thread_id; i < n; i += NUM_THREADS) {
+                    a[i] = (a[i] * inv_n) % p;
+                }
+                break;
             }
-            break;
-        }
-        case TASK_CRT_COMBINE: {
-            // CRT合并任务，每个线程处理部分结果
-            uint64_t **results = task_state.mod_results;
-            uint64_t *mod_list = task_state.mod_list;
-            uint64_t *final_result = task_state.result;
-            int mod_count = task_state.mod_count;
-            int result_length = task_state.n;
-            uint64_t p = task_state.p;
+            case TASK_CRT_COMBINE: {
+                // CRT合并任务，每个线程处理部分结果
+                uint64_t **results = task_state.mod_results;
+                uint64_t *mod_list = task_state.mod_list;
+                uint64_t *final_result = task_state.result;
+                int mod_count = task_state.mod_count;
+                int result_length = task_state.n;
+                uint64_t p = task_state.p;
 
-            // 计算模数乘积
-            __uint128_t M = 1;
-            for (int i = 0; i < mod_count; i++) {
-                M *= mod_list[i];
-            }
-
-            // 每个线程处理一部分结果
-            for (int j = thread_id; j < result_length; j += NUM_THREADS) {
-                __uint128_t sum = 0;
+                // 计算模数乘积
+                __uint128_t M = 1;
                 for (int i = 0; i < mod_count; i++) {
-                    uint64_t mod_num = mod_list[i];
-
-                    __uint128_t Mi = M / mod_num;
-                    uint64_t Mi_mod = Mi % mod_num;
-                    uint64_t Mi_inv = pow(Mi_mod, mod_num - 2, mod_num);
-
-                    sum =
-                        (sum + (Mi * ((results[i][j] * Mi_inv) % mod_num))) % M;
+                    M *= mod_list[i];
                 }
-                final_result[j] = sum % p;
-            }
-            break;
-        }
-        case TASK_EXIT:
-            return NULL; // 退出任务
-            break;
-        case TASK_COPY_DATA: {
-            // 转入蒙哥马利
-            uint64_t *a = task_state.a;      // 源数组A
-            uint64_t *b = task_state.b;      // 源数组B
-            uint64_t *fa = task_state.dst_a; // 目标数组A
-            uint64_t *fb = task_state.dst_b; // 目标数组B
-            int n = task_state.src_n;        // 源数组长度
-            int len = task_state.dst_len;    // 目标数组长度
 
-            // 每个线程复制一部分源数据
-            for (int i = thread_id; i < n; i += NUM_THREADS) {
-                fa[i] = a[i];
-                fb[i] = b[i];
-            }
+                // 每个线程处理一部分结果
+                for (int j = thread_id; j < result_length; j += NUM_THREADS) {
+                    __uint128_t sum = 0;
+                    for (int i = 0; i < mod_count; i++) {
+                        uint64_t mod_num = mod_list[i];
 
-            // 每个线程填充一部分零
-            for (int i = n + thread_id; i < len; i += NUM_THREADS) {
-                fa[i] = fb[i] = 0;
-            }
-            break;
-        }
-        case TASK_COPY_RESULT: {
-            uint64_t *src = task_state.a;      // 源数组
-            uint64_t *dst = task_state.result; // 目标数组
-            int len = task_state.n;            // 数组长度
+                        __uint128_t Mi = M / mod_num;
+                        uint64_t Mi_mod = Mi % mod_num;
+                        uint64_t Mi_inv = pow(Mi_mod, mod_num - 2, mod_num);
 
-            // 每个线程复制一部分结果
-            for (int i = thread_id; i < len; i += NUM_THREADS) {
-                dst[i] = src[i];
+                        sum =
+                            (sum + (Mi * ((results[i][j] * Mi_inv) % mod_num))) % M;
+                    }
+                    final_result[j] = sum % p;
+                }
+                break;
             }
-            break;
-        }
-        default:
-            break;
+            case TASK_EXIT:
+                return NULL;  // 退出任务
+                break;
+            case TASK_COPY_DATA: {
+                // 转入蒙哥马利
+                uint64_t *a = task_state.a;       // 源数组A
+                uint64_t *b = task_state.b;       // 源数组B
+                uint64_t *fa = task_state.dst_a;  // 目标数组A
+                uint64_t *fb = task_state.dst_b;  // 目标数组B
+                int n = task_state.src_n;         // 源数组长度
+                int len = task_state.dst_len;     // 目标数组长度
+
+                // 每个线程复制一部分源数据
+                for (int i = thread_id; i < n; i += NUM_THREADS) {
+                    fa[i] = a[i];
+                    fb[i] = b[i];
+                }
+
+                // 每个线程填充一部分零
+                for (int i = n + thread_id; i < len; i += NUM_THREADS) {
+                    fa[i] = fb[i] = 0;
+                }
+                break;
+            }
+            case TASK_COPY_RESULT: {
+                uint64_t *src = task_state.a;       // 源数组
+                uint64_t *dst = task_state.result;  // 目标数组
+                int len = task_state.n;             // 数组长度
+
+                // 每个线程复制一部分结果
+                for (int i = thread_id; i < len; i += NUM_THREADS) {
+                    dst[i] = src[i];
+                }
+                break;
+            }
+            default:
+                break;
         }
         // 等待所有线程完成当前任务
         pthread_barrier_wait(&barrier);
@@ -306,9 +304,6 @@ void NTT_persistent(uint64_t *a, int n, bool invert, uint64_t p, int bit,
                     int g = 3) {
     // 设置基本任务参数
     task_state.a = a;
-
-
-
 
     // 蝶形操作
     for (int len = 2; len <= n; len <<= 1) {
@@ -328,7 +323,7 @@ void NTT_persistent(uint64_t *a, int n, bool invert, uint64_t p, int bit,
     // 如果是逆变换，需要除以n（即乘以n的模p逆元），并行处理
     if (invert) {
         task_state.current_task = TASK_APPLY_INV_N;
-        task_state.inv_n = pow(n, p - 2, p); // 使用费马小定理计算逆元
+        task_state.inv_n = pow(n, p - 2, p);  // 使用费马小定理计算逆元
 
         // 唤醒工作线程应用逆元
         pthread_barrier_wait(&barrier);
@@ -391,7 +386,7 @@ void NTT_multiply_persistent(uint64_t *a, uint64_t *b, uint64_t *result, int n,
     // 逆序数组fa
     task_state.a = fa;
     // 设置逆序置换任务参数
-    task_state.current_task = TASK_REVERSE; 
+    task_state.current_task = TASK_REVERSE;
 
     // 唤醒工作线程执行逆序置换
     pthread_barrier_wait(&barrier);
@@ -402,12 +397,12 @@ void NTT_multiply_persistent(uint64_t *a, uint64_t *b, uint64_t *result, int n,
     // 对fa进行ntt
     task_state.a = fa;
 
-        // 蝶形操作
+    // 蝶形操作
     for (int c_len = 2; c_len <= len; c_len <<= 1) {
         // 更新当前任务状态
         task_state.current_task = TASK_NTT;
         task_state.current_len = c_len;
-        task_state.g_n =  pow( 3 , (p - 1) / c_len, p);
+        task_state.g_n = pow(3, (p - 1) / c_len, p);
 
         // 唤醒工作线程
         pthread_barrier_wait(&barrier);
@@ -416,12 +411,10 @@ void NTT_multiply_persistent(uint64_t *a, uint64_t *b, uint64_t *result, int n,
         pthread_barrier_wait(&barrier);
     }
 
-
-
     // 逆序数组fb
     task_state.a = fb;
     // 设置逆序置换任务参数
-    task_state.current_task = TASK_REVERSE; 
+    task_state.current_task = TASK_REVERSE;
 
     // 唤醒工作线程执行逆序置换
     pthread_barrier_wait(&barrier);
@@ -436,7 +429,7 @@ void NTT_multiply_persistent(uint64_t *a, uint64_t *b, uint64_t *result, int n,
         // 更新当前任务状态
         task_state.current_task = TASK_NTT;
         task_state.current_len = c_len;
-        task_state.g_n =  pow( 3 , (p - 1) / c_len, p);
+        task_state.g_n = pow(3, (p - 1) / c_len, p);
 
         // 唤醒工作线程
         pthread_barrier_wait(&barrier);
@@ -444,8 +437,6 @@ void NTT_multiply_persistent(uint64_t *a, uint64_t *b, uint64_t *result, int n,
         // 等待所有线程完成当前任务
         pthread_barrier_wait(&barrier);
     }
-
-
 
     // 点值乘法
     task_state.current_task = TASK_MULTIPLY;
@@ -460,8 +451,6 @@ void NTT_multiply_persistent(uint64_t *a, uint64_t *b, uint64_t *result, int n,
     // 等待所有线程完成
     pthread_barrier_wait(&barrier);
 
-
-
     // 逆序fa
     task_state.a = fa;
     // 设置逆序置换任务参数
@@ -474,7 +463,7 @@ void NTT_multiply_persistent(uint64_t *a, uint64_t *b, uint64_t *result, int n,
     // 对fa进行ntt
     task_state.a = fa;
 
-        // 蝶形操作
+    // 蝶形操作
     for (int c_len = 2; c_len <= len; c_len <<= 1) {
         // 更新当前任务状态
         task_state.current_task = TASK_NTT;
@@ -489,14 +478,13 @@ void NTT_multiply_persistent(uint64_t *a, uint64_t *b, uint64_t *result, int n,
     }
 
     task_state.current_task = TASK_APPLY_INV_N;
-    task_state.inv_n = pow(len, p - 2, p); // 使用费马小定理计算逆元
+    task_state.inv_n = pow(len, p - 2, p);  // 使用费马小定理计算逆元
 
     // 唤醒工作线程应用逆元
     pthread_barrier_wait(&barrier);
 
     // 等待所有线程完成
     pthread_barrier_wait(&barrier);
-
 
     // 复制结果
     for (int i = 0; i < len; i++) {
@@ -560,7 +548,6 @@ uint64_t a[300000], b[300000], ab[300000];
 pthread_t threads[NUM_THREADS];
 
 int main(int argc, char *argv[]) {
-
     // 测试用例
     int test_begin = 0;
     int test_end = 4;

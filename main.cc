@@ -1,17 +1,20 @@
+#include <sys/time.h>
+
 #include <chrono>
 #include <cstring>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <string>
-#include <sys/time.h>
 // #include <omp.h>
-#include "Mentgomery32.h"
-#include "Montgomery.h"
-#include <algorithm>
 #include <arm_neon.h>
+
+#include <algorithm>
 #include <cmath>
 #include <complex>
+
+#include "Mentgomery32.h"
+#include "Montgomery.h"
 
 // 可以自行添加需要的头文件
 
@@ -109,10 +112,10 @@ int pow(int base, int exp, int mod) {
     return res;
 }
 
-using Comp = std::complex<double>; // 复数类型
-constexpr Comp I(0, 1);            // i
+using Comp = std::complex<double>;  // 复数类型
+constexpr Comp I(0, 1);             // i
 constexpr int MAX_N = 1 << 20;
-Comp tmp[MAX_N]; // 临时数组
+Comp tmp[MAX_N];  // 临时数组
 
 // DFT（离散傅立叶变换） 来实现FFT（快速傅立叶变换）
 
@@ -121,16 +124,16 @@ Comp tmp[MAX_N]; // 临时数组
 // rev = 1 表示正向变换，rev = -1 表示逆向变换
 void DFT(Comp *a, int n, int rev) {
     if (n == 1)
-        return; // 递归终止条件
+        return;  // 递归终止条件
 
     for (int i = 0; i < n; ++i)
         tmp[i] = a[i];
 
     // 偶数放在左面 ，奇数放在右面
     for (int i = 0; i < n; ++i) {
-        if (i & 1) // 奇数
+        if (i & 1)  // 奇数
             a[n / 2 + i / 2] = tmp[i];
-        else // 偶数
+        else  // 偶数
             a[i / 2] = tmp[i];
     }
     // 分别对偶数和奇数部分进行递归 DFT
@@ -161,7 +164,7 @@ void reverse_fft(Comp *a, int n, int bit) {
     }
     for (int i = 0; i < n; i++) {
         if (i < rev[i]) {
-            std::swap(a[i], a[rev[i]]); // 位逆序置换
+            std::swap(a[i], a[rev[i]]);  // 位逆序置换
         }
     }
     // 位逆序置换
@@ -173,7 +176,7 @@ void FFT_Iteration(Comp *a, int n, int on) {
     while ((1 << bit) < n)
         bit++;
 
-    reverse_fft(a, n, bit); // 20 是二进制位数，n <= 2^20
+    reverse_fft(a, n, bit);  // 20 是二进制位数，n <= 2^20
 
     // 蝶形操作
     for (int len = 2; len <= n; len <<= 1) {
@@ -181,14 +184,13 @@ void FFT_Iteration(Comp *a, int n, int on) {
         // wlen 是当前的单位复根，wlen = exp(2 * pi * i / len) ,单位圆的 len
         // 等分 如果是逆变换，则 wlen = exp(-2 * pi * i / len)
         Comp wlen = on == -1 ? std::exp(Comp(0, -2 * M_PI / len))
-                             : std::exp(Comp(0, 2 * M_PI / len)); // 原根
+                             : std::exp(Comp(0, 2 * M_PI / len));  // 原根
         // 合并 一共合并 n / len 次
         for (int i = 0; i < n; i += len) {
-            Comp w(1, 0); // 当前单位复根 omega^k_n ，初始 k = 0 ，值为1
+            Comp w(1, 0);  // 当前单位复根 omega^k_n ，初始 k = 0 ，值为1
 
             // 每一部分 合并 len/2 次
             for (int j = 0; j < len / 2; j++) {
-
                 Comp u = a[i + j];
                 Comp v = a[i + j + len / 2] * w;
                 // F(omega^k*n) = G(omega^k\_{n/2}) +
@@ -205,7 +207,7 @@ void FFT_Iteration(Comp *a, int n, int on) {
     //逆向fft
     if (on == -1) {
         for (int i = 0; i < n; i++) {
-            a[i] /= n; // 逆变换结果除以 n
+            a[i] /= n;  // 逆变换结果除以 n
         }
     }
 }
@@ -244,7 +246,7 @@ void FFT_multiply(int *a, int *b, int *result, int n, int p) {
     for (int i = 0; i < 2 * n - 1; i++) {
         result[i] = static_cast<int>(fa[i].real() + 0.5) % p;
         if (result[i] < 0)
-            result[i] += p; // 确保结果非负
+            result[i] += p;  // 确保结果非负
     }
 
     delete[] fa;
@@ -266,7 +268,7 @@ void reverse(int *a, int n, int bit) {
     }
     for (int i = 0; i < n; i++) {
         if (i < rev[i]) {
-            std::swap(a[i], a[rev[i]]); // 位逆序置换
+            std::swap(a[i], a[rev[i]]);  // 位逆序置换
         }
     }
 }
@@ -290,7 +292,7 @@ void NTT(int *a, int n, bool invert, int p, int g) {
 
         // 处理每个块
         for (int i = 0; i < n; i += len) {
-            int g = 1; // 初始单位根为1 k = 0 ，g = 1
+            int g = 1;  // 初始单位根为1 k = 0 ，g = 1
 
             // 处理每个蝶形单元
             for (int j = 0; j < len / 2; j++) {
@@ -302,16 +304,16 @@ void NTT(int *a, int n, bool invert, int p, int g) {
                 // F(omega^{k+n/2}*n) = G(omega^k*{n/2}) -
                 // omega^k_n*H(omega^k\_{n/2})
                 a[i + j + len / 2] =
-                    (u - v + p) % p; // 注意要加上p再取模，保证结果非负
+                    (u - v + p) % p;  // 注意要加上p再取模，保证结果非负
 
-                g = (1LL * g * g_n) % p; // 更新单位根
+                g = (1LL * g * g_n) % p;  // 更新单位根
             }
         }
     }
 
     // 如果是逆变换，需要除以n（即乘以n的模p逆元）
     if (invert) {
-        int inv_n = pow(n, p - 2, p); // 使用费马小定理计算逆元
+        int inv_n = pow(n, p - 2, p);  // 使用费马小定理计算逆元
         for (int i = 0; i < n; i++) {
             a[i] = (1LL * a[i] * inv_n) % p;
         }
@@ -376,14 +378,13 @@ void NTT_Montgomery(int *a, int n, bool invert, int p, int g = 3) {
 
     // 蝶形操作
     for (int len = 2; len <= n; len <<= 1) {
-
         int g_n = invert ? pow(g, (p - 1) - (p - 1) / len, p)
                          : pow(g, (p - 1) / len, p);
 
         int step = len >> 1;
         // step 是当前的蝶形步长，step = len / 2
         for (int i = 0; i < n; i += len) {
-            uint64_t g_pow = 1; // 当前单位根幂次
+            uint64_t g_pow = 1;  // 当前单位根幂次
 
             for (int j = 0; j < step; j++) {
                 uint64_t u = a[i + j];
@@ -448,7 +449,6 @@ void NTT_multiply_Montgomery(int *a, int *b, int *result, int n, int p) {
 
 void NTT_Montgomerybase2(int *a, int n, bool invert, int p, Montgomery32 mont,
                          int g = 3) {
-
     // 计算二进制位数
     int bit = 0;
     while ((1 << bit) < n)
@@ -457,7 +457,6 @@ void NTT_Montgomerybase2(int *a, int n, bool invert, int p, Montgomery32 mont,
     reverse(a, n, bit);
     // 蝶形操作
     for (int len = 2; len <= n; len <<= 1) {
-
         // g_n^1
         int g_n_noamal = invert ? pow(g, (p - 1) - (p - 1) / len, p)
                                 : pow(g, (p - 1) / len, p);
@@ -466,7 +465,7 @@ void NTT_Montgomerybase2(int *a, int n, bool invert, int p, Montgomery32 mont,
         int step = len >> 1;
         // step 是当前的蝶形步长，step = len / 2
         for (int i = 0; i < n; i += len) {
-            uint64_t g_pow = mont.R_mod_N; // 当前单位根幂次
+            uint64_t g_pow = mont.R_mod_N;  // 当前单位根幂次
             uint64_t u, v;
             for (int j = 0; j < step; j++) {
                 u = a[i + j];
@@ -539,9 +538,8 @@ void NTT_multiply_Montgomerybase2(int *a, int *b, int *result, int n, int p) {
 // 通过将输入数据分成4个部分来减少蝶形操作的次数
 // 基4的位逆序置换函数
 void reverse_base4(int *a, int n) {
-
-    int log4n = 0; // log4n是n的基4对数
-    int temp = n;  // 临时变量
+    int log4n = 0;  // log4n是n的基4对数
+    int temp = n;   // 临时变量
     while (temp > 1) {
         temp >>= 2;
         log4n++;
@@ -552,7 +550,7 @@ void reverse_base4(int *a, int n) {
         int reversed = 0;
         int num = i;
         for (int j = 0; j < log4n; j++) {
-            reversed = (reversed << 2) | (num & 3); // 每次取最低两位并左移
+            reversed = (reversed << 2) | (num & 3);  // 每次取最低两位并左移
             num >>= 2;
         }
         rev[i] = reversed;
@@ -595,7 +593,7 @@ void NTT_base4_naive(int *a, int n, bool invert, int p, int g = 3) {
             // 处理每个蝴蝶形单元
             // 这里的len是4的幂次
 
-            uint64_t w[4] = {1, 1, 1, 1}; // 当前单位根幂次
+            uint64_t w[4] = {1, 1, 1, 1};  // 当前单位根幂次
 
             // 当前单位根幂次
             uint64_t u[4];
@@ -700,19 +698,17 @@ void NTT_base4_m(int *a, int n, bool invert, int p, int g = 3) {
             // 处理每个蝴蝶形单元
             // 这里的len是4的幂次
 
-            uint64_t w[4] = {1, 1, 1, 1}; // 当前单位根幂次
+            uint64_t w[4] = {1, 1, 1, 1};  // 当前单位根幂次
 
             // 当前单位根幂次
             uint64_t u[4];
             for (int j = 0; j < len / 4; j++) {
                 if (j == 0) {
                     for (int k = 0; k < 4; k++) {
-
                         u[k] = a[i + j + k * step];
                     }
                 } else {
                     for (int k = 0; k < 4; k++) {
-
                         u[k] = mont.multiply(a[i + j + k * step], w[k]);
                     }
                 }
@@ -807,10 +803,9 @@ void NTT_base4_Montgomery_domain(int *a, int n, bool invert, int p, int g = 3) {
             w[3] = w[0];
             uint64_t u[4];
             for (int j = 0; j < len / 4; j++) {
-
                 if (j == 0) {
                     for (int k = 0; k < 4; k++) {
-                        u[k] = a[i + j + k * step]; // 已经在蒙哥马利域
+                        u[k] = a[i + j + k * step];  // 已经在蒙哥马利域
                     }
                 } else {
                     for (int k = 0; k < 4; k++) {
@@ -841,7 +836,7 @@ void NTT_base4_Montgomery_domain(int *a, int n, bool invert, int p, int g = 3) {
     if (invert) {
         int inv_n = pow(n, p - 2, p);
         uint64_t inv_n_mont =
-            mont.REDC(static_cast<uint64_t>(inv_n) * mont.R2); // 转到蒙哥马利域
+            mont.REDC(static_cast<uint64_t>(inv_n) * mont.R2);  // 转到蒙哥马利域
 
         for (int i = 0; i < n; i++) {
             a[i] = mont.REDC(static_cast<uint64_t>(a[i]) * inv_n_mont);
@@ -897,9 +892,8 @@ void NTT_multiply_base4_Montgomery_domain(int *a, int *b, int *result, int n,
 // ------------------------------------------------------------------------------------
 
 void reverse_base4neon(uint32_t *a, int n) {
-
-    int log4n = 0; // log4n是n的基4对数
-    int temp = n;  // 临时变量
+    int log4n = 0;  // log4n是n的基4对数
+    int temp = n;   // 临时变量
     while (temp > 1) {
         temp >>= 2;
         log4n++;
@@ -935,7 +929,7 @@ void NTT_base4_Montgomery32(int *a, int n, bool invert, int p) {
     reverse_base4(a, n);
     // 蝶形操作
     for (int len = 4; len <= n; len <<= 2) {
-        int g = 3; // 原根
+        int g = 3;  // 原根
         int g_n_normal = invert ? pow(g, (p - 1) - (p - 1) / len, p)
                                 : pow(g, (p - 1) / len, p);
 
@@ -961,7 +955,7 @@ void NTT_base4_Montgomery32(int *a, int n, bool invert, int p) {
             for (int j = 0; j < len / 4; j++) {
                 if (j == 0) {
                     for (int k = 0; k < 4; k++) {
-                        u[k] = a[i + j + k * step]; // 已经在蒙哥马利域
+                        u[k] = a[i + j + k * step];  // 已经在蒙哥马利域
                     }
                 } else {
                     for (int k = 0; k < 4; k++) {
@@ -992,7 +986,7 @@ void NTT_base4_Montgomery32(int *a, int n, bool invert, int p) {
     if (invert) {
         int inv_n = pow(n, p - 2, p);
         uint32_t inv_n_mont =
-            mont.REDC((uint64_t)inv_n * mont.R2); // 转到蒙哥马利域
+            mont.REDC((uint64_t)inv_n * mont.R2);  // 转到蒙哥马利域
 
         for (int i = 0; i < n; i++) {
             a[i] = mont.REDC((uint64_t)a[i] * inv_n_mont);
@@ -1008,7 +1002,6 @@ void NTT_base4_Montgomery32neon(uint32_t *a, int n, bool invert, int p,
     reverse_base4neon(a, n);
     // 蝶形操作
     for (int len = 4; len <= n; len <<= 2) {
-
         int g_n_normal = invert ? pow(g, (p - 1) - (p - 1) / len, p)
                                 : pow(g, (p - 1) / len, p);
 
@@ -1039,7 +1032,7 @@ void NTT_base4_Montgomery32neon(uint32_t *a, int n, bool invert, int p,
             for (int j = 0; j < len / 4; j++) {
                 if (j == 0) {
                     for (int k = 0; k < 4; k++) {
-                        u[k] = a[i + j + k * step]; // 已经在蒙哥马利域
+                        u[k] = a[i + j + k * step];  // 已经在蒙哥马利域
                     }
                 } else {
                     for (int k = 0; k < 4; k++) {
@@ -1104,7 +1097,7 @@ void NTT_base4_Montgomery32neon(uint32_t *a, int n, bool invert, int p,
     if (invert) {
         int inv_n = pow(n, p - 2, p);
         uint32_t inv_n_mont =
-            mont.REDC((uint64_t)inv_n * mont.R2); // 转到蒙哥马利域
+            mont.REDC((uint64_t)inv_n * mont.R2);  // 转到蒙哥马利域
 
         for (int i = 0; i < n; i++) {
             a[i] = mont.REDC((uint64_t)a[i] * inv_n_mont);
@@ -1184,7 +1177,6 @@ void NTT_multiply_base4_Montgomery32neon(int *a, int *b, int *result, int n,
     uint32x4_t fa_vec, fb_vec;
     // 复制数据并转换到蒙哥马利域
     for (int i = 0; i < n; i += 4) {
-
         for (int j = 0; j < 4; j++) {
             a_mul[j] = (uint64_t)a[i + j] * mont.R2;
             b_mul[j] = (uint64_t)b[i + j] * mont.R2;
@@ -1247,7 +1239,6 @@ void NTT_multiply_base4_Montgomery32neon(int *a, int *b, int *result, int n,
 
     // 复制结果，将结果从蒙哥马利域转回普通域
     for (int i = 0; i < 2 * n - 1; i++) {
-
         result[i] = mont.REDC(fa[i]);
     }
 
@@ -1257,7 +1248,6 @@ void NTT_multiply_base4_Montgomery32neon(int *a, int *b, int *result, int n,
 
 int a[300000], b[300000], ab[300000];
 int main(int argc, char *argv[]) {
-
     // 保证输入的所有模数的原根均为 3, 且模数都能表示为 a \times 4 ^ k + 1
     // 的形式 输入模数分别为 7340033 104857601 469762049 1337006139375617
     // 第四个模数超过了整型表示范围,

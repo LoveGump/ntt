@@ -1,15 +1,16 @@
 #pragma once
-#include <stdexcept>
 #include <stdint.h>
+
+#include <stdexcept>
 
 // Montgomery乘法类
 class Montgomery {
-  public:
-    uint64_t N;         // 模数
-    uint64_t R;         // 通常选择2^k且满足 R > N, gcd(R,N)=1
-    uint64_t logR;      // R的二进制位数（如R=2^64 → logR=64）
-    uint64_t N_inv_neg; // -N⁻¹ mod R
-    uint64_t R2;        // R² mod N
+public:
+    uint64_t N;          // 模数
+    uint64_t R;          // 通常选择2^k且满足 R > N, gcd(R,N)=1
+    uint64_t logR;       // R的二进制位数（如R=2^64 → logR=64）
+    uint64_t N_inv_neg;  // -N⁻¹ mod R
+    uint64_t R2;         // R² mod N
     uint64_t R_mon_N;
 
     // 幂取模
@@ -49,17 +50,17 @@ class Montgomery {
         return (x < 0) ? x + m : x;
     }
 
-  public:
+public:
     // 构造函数
-    Montgomery(uint64_t N) : N(N) {
-
+    Montgomery(uint64_t N)
+        : N(N) {
         // 计算R为大于N的最小2^k
-        this->logR = 32;          // 使用32位整数
-        this->R = (1ULL << logR); // R = 2^32
+        this->logR = 32;           // 使用32位整数
+        this->R = (1ULL << logR);  // R = 2^32
 
         // 计算N⁻¹ mod R
         uint64_t N_inv = modinv(N, R);
-        this->N_inv_neg = R - N_inv; // -N⁻¹ mod R
+        this->N_inv_neg = R - N_inv;  // -N⁻¹ mod R
 
         // 预计算R² mod N
         this->R2 = (R % N) * (R % N) % N;

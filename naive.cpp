@@ -1,3 +1,5 @@
+#include <pthread.h>
+
 #include <algorithm>
 #include <chrono>
 #include <cmath>
@@ -5,7 +7,6 @@
 #include <fstream>
 #include <iomanip>
 #include <iostream>
-#include <pthread.h>
 #include <string>
 
 // 可以自行添加需要的头文件
@@ -70,19 +71,19 @@ void fWrite(uint64_t *ab, int n, int input_id) {
 
 // 全局变量，用于传递给线程的参数
 struct NTTThreadArgs {
-    uint64_t *a;   // 输入数组
-    int n;         // 数组长度
-    int len;       // 当前蝶形长度
-    int thread_id; // 线程ID
-    uint64_t p;    // 模数
-    uint64_t g_n;  // 当前单位根
+    uint64_t *a;    // 输入数组
+    int n;          // 数组长度
+    int len;        // 当前蝶形长度
+    int thread_id;  // 线程ID
+    uint64_t p;     // 模数
+    uint64_t g_n;   // 当前单位根
 };
 
 struct MulThreadArgs {
-    uint64_t *fa;  // 输入数组A
-    uint64_t *fb;  // 输入数组B
-    int len;       // 数组长度
-    int thread_id; // 线程ID
+    uint64_t *fa;   // 输入数组A
+    uint64_t *fb;   // 输入数组B
+    int len;        // 数组长度
+    int thread_id;  // 线程ID
     uint64_t p;
 };
 
@@ -133,7 +134,7 @@ void *ntt_thread_function(void *arg) {
 
     // 每个线程处理一部分块
     for (int i = thread_id * len; i < n; i += len * NUM_THREADS) {
-        uint64_t g = 1; // 初始单位根为1
+        uint64_t g = 1;  // 初始单位根为1
 
         // 处理每个蝶形单元
         for (int j = 0; j < len / 2; j++) {
@@ -143,9 +144,9 @@ void *ntt_thread_function(void *arg) {
             a[i + j] = (u + v) % p;
             // F(g^{k+n/2}*n) = G(g^k*{n/2}) - g^k_n*H(g^k_{n/2})
             a[i + j + len / 2] =
-                (u - v + p) % p; // 注意要加上p再取模，保证结果非负
+                (u - v + p) % p;  // 注意要加上p再取模，保证结果非负
 
-            g = (g * g_n) % p; // 更新单位根
+            g = (g * g_n) % p;  // 更新单位根
         }
     }
 
@@ -213,7 +214,7 @@ void NTT_parallel(uint64_t *a, uint64_t n, bool invert, uint64_t p, int g = 3) {
 
     // 如果是逆变换，需要除以n（即乘以n的模p逆元）
     if (invert) {
-        uint64_t inv_n = pow(n, p - 2, p); // 使用费马小定理计算逆元
+        uint64_t inv_n = pow(n, p - 2, p);  // 使用费马小定理计算逆元
         for (int i = 0; i < n; i++) {
             a[i] = a[i] * inv_n % p;
         }
@@ -283,7 +284,6 @@ void NTT_multiply_parallel(uint64_t *a, uint64_t *b, uint64_t *result, int n,
 
 uint64_t a[300000], b[300000], ab[300000];
 int main(int argc, char *argv[]) {
-
     // 保证输入的所有模数的原根均为 3, 且模数都能表示为 a \times 4 ^ k + 1
     // 的形式 输入模数分别为 7340033 104857601 469762049 1337006139375617
     // 167772161 998244353 1004535809 469762049

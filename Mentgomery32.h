@@ -1,35 +1,35 @@
 #pragma once
+#include <arm_neon.h>
 #include <stdint.h>
 
-#include <arm_neon.h>
 #include <stdexcept>
 
 // 针对中等大小模数优化的蒙哥马利乘法类(最大支持469762049)
 class Montgomery32 {
-  public:
-    uint32_t N;         // 模数
-    uint64_t R;         // 2^32
-    uint32_t logR;      // 32
-    uint32_t N_inv_neg; // -N^(-1) mod R
-    uint32_t R2;        // R² mod N
-    uint32_t R_minus_1; // R - 1
-    uint32_t R_mod_N;   // R
+public:
+    uint32_t N;          // 模数
+    uint64_t R;          // 2^32
+    uint32_t logR;       // 32
+    uint32_t N_inv_neg;  // -N^(-1) mod R
+    uint32_t R2;         // R² mod N
+    uint32_t R_minus_1;  // R - 1
+    uint32_t R_mod_N;    // R
 
-    uint32x4_t N_vec;         // 模数
-    uint32x4_t N_inv_neg_vec; // -N^(-1) mod R
-    uint32x4_t R2_vec;        // R² mod N
-    uint32x4_t R_minus_1_vec; // R - 1
+    uint32x4_t N_vec;          // 模数
+    uint32x4_t N_inv_neg_vec;  // -N^(-1) mod R
+    uint32x4_t R2_vec;         // R² mod N
+    uint32x4_t R_minus_1_vec;  // R - 1
 
-  public:
+public:
     // 构造函数 - 针对 N <= 469762049 进行优化
-    Montgomery32(uint32_t N) : N(N) {
-
+    Montgomery32(uint32_t N)
+        : N(N) {
         if (N == 0 || (N & 1) == 0) {
             throw std::runtime_error("N 必须是正奇数");
         }
         // 计算N的有效位数
 
-        this->logR = 32; // logR = bits
+        this->logR = 32;  // logR = bits
         this->R = (1ll << logR);
 
         //  this->R = (1u << logR);
@@ -37,7 +37,7 @@ class Montgomery32 {
 
         // 计算 N⁻¹ mod R
         uint32_t N_inv = modinv(N, R);
-        this->N_inv_neg = R - N_inv; // -N⁻¹ mod R
+        this->N_inv_neg = R - N_inv;  // -N⁻¹ mod R
 
         // 预计算 R² mod N (避免溢出)
         uint64_t R_mod_N = R % N;
@@ -53,7 +53,6 @@ class Montgomery32 {
 
     // 改进的REDC，使用32位整数，减少溢出检查
     uint32_t REDC(uint64_t T) const {
-
         // uint32_t T_low = T & (R - 1);
         uint32_t T_low = T & R_minus_1;
 
@@ -66,7 +65,6 @@ class Montgomery32 {
     // 接下来就是利用NEON指令集进行优化
     // NEON优化的REDC函数 - 一次处理4个数 数组处理
     uint32x4_t REDC_neon(const uint64_t T[4]) const {
-
         uint32_t result[4];
 
         // 步骤1: 提取每个64位T % R
@@ -104,10 +102,10 @@ class Montgomery32 {
         uint32x4_t m = vmulq_u32(T_low, N_inv_neg_vec);
 
         // 由于需要64位完整结果，我们分解为低位和高位分别计算
-        uint32x2_t m_low = vget_low_u32(m);       // m0 m1
-        uint32x2_t m_high = vget_high_u32(m);     // m2 m3
-        uint32x2_t N_low = vget_low_u32(N_vec);   // N0 N1
-        uint32x2_t N_high = vget_high_u32(N_vec); // N2 N3
+        uint32x2_t m_low = vget_low_u32(m);        // m0 m1
+        uint32x2_t m_high = vget_high_u32(m);      // m2 m3
+        uint32x2_t N_low = vget_low_u32(N_vec);    // N0 N1
+        uint32x2_t N_high = vget_high_u32(N_vec);  // N2 N3
 
         // 完整的乘法结果
         uint64x2_t mul_low = vmull_u32(m_low, N_low);
@@ -124,7 +122,7 @@ class Montgomery32 {
         return vbslq_u32(vcgeq_u32(t, N_vec), vsubq_u32(t, N_vec), t);
     }
 
-  private:
+private:
     // 扩展欧几里得算法求模逆元
     static int64_t extendedGCD(int64_t a, int64_t b, int64_t &x, int64_t &y) {
         if (a == 0) {
@@ -147,6 +145,6 @@ class Montgomery32 {
         if (gcd != 1) {
             throw std::runtime_error("不存在模逆元");
         }
-        return (uint32_t)(x % uint64_t(m) + m) % m; // 确保结果为正
+        return (uint32_t)(x % uint64_t(m) + m) % m;  // 确保结果为正
     }
 };

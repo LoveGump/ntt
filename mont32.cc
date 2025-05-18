@@ -1,16 +1,19 @@
+#include <sys/time.h>
+
 #include <chrono>
 #include <cstring>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <string>
-#include <sys/time.h>
 // #include <omp.h>
-#include "Montgomery.h"
-#include <algorithm>
 #include <arm_neon.h>
+
+#include <algorithm>
 #include <cmath>
 #include <complex>
+
+#include "Montgomery.h"
 
 // 可以自行添加需要的头文件
 
@@ -100,7 +103,7 @@ void reverse(uint64_t *a, int n, int bit) {
     }
     for (int i = 0; i < n; i++) {
         if (i < rev[i]) {
-            std::swap(a[i], a[rev[i]]); // 位逆序置换
+            std::swap(a[i], a[rev[i]]);  // 位逆序置换
         }
     }
 }
@@ -124,7 +127,7 @@ void NTT(uint64_t *a, int n, bool invert, uint64_t p, int g) {
 
         // 处理每个块
         for (int i = 0; i < n; i += len) {
-            uint64_t g = 1; // 初始单位根为1 k = 0 ，g = 1
+            uint64_t g = 1;  // 初始单位根为1 k = 0 ，g = 1
 
             // 处理每个蝶形单元
             for (int j = 0; j < len / 2; j++) {
@@ -136,16 +139,16 @@ void NTT(uint64_t *a, int n, bool invert, uint64_t p, int g) {
                 // F(omega^{k+n/2}*n) = G(omega^k*{n/2}) -
                 // omega^k_n*H(omega^k\_{n/2})
                 a[i + j + len / 2] =
-                    (u - v + p) % p; // 注意要加上p再取模，保证结果非负
+                    (u - v + p) % p;  // 注意要加上p再取模，保证结果非负
 
-                g = (1LL * g * g_n) % p; // 更新单位根
+                g = (1LL * g * g_n) % p;  // 更新单位根
             }
         }
     }
 
     // 如果是逆变换，需要除以n（即乘以n的模p逆元）
     if (invert) {
-        uint64_t inv_n = pow(n, p - 2, p); // 使用费马小定理计算逆元
+        uint64_t inv_n = pow(n, p - 2, p);  // 使用费马小定理计算逆元
         for (int i = 0; i < n; i++) {
             a[i] = (1uLL * a[i] * inv_n) % p;
         }
@@ -198,7 +201,6 @@ void NTT_multiply(uint64_t *a, uint64_t *b, uint64_t *result, int n,
 
 void NTT_Montgomerybase2(uint64_t *a, int n, bool invert, uint64_t p,
                          Montgomery mont, int g = 3) {
-
     // 计算二进制位数
     int bit = 0;
     while ((1 << bit) < n)
@@ -207,7 +209,6 @@ void NTT_Montgomerybase2(uint64_t *a, int n, bool invert, uint64_t p,
     reverse(a, n, bit);
     // 蝶形操作
     for (int len = 2; len <= n; len <<= 1) {
-
         // g_n^1
         uint64_t g_n_noamal = invert ? pow(g, (p - 1) - (p - 1) / len, p)
                                      : pow(g, (p - 1) / len, p);
@@ -216,7 +217,7 @@ void NTT_Montgomerybase2(uint64_t *a, int n, bool invert, uint64_t p,
         int step = len >> 1;
         // step 是当前的蝶形步长，step = len / 2
         for (int i = 0; i < n; i += len) {
-            uint64_t g_pow = mont.R_mon_N; // 当前单位根幂次
+            uint64_t g_pow = mont.R_mon_N;  // 当前单位根幂次
             uint64_t u, v;
             for (int j = 0; j < step; j++) {
                 u = a[i + j];
@@ -290,9 +291,8 @@ void NTT_multiply_Montgomerybase2(uint64_t *a, uint64_t *b, uint64_t *result,
 // 通过将输入数据分成4个部分来减少蝶形操作的次数
 // 基4的位逆序置换函数
 void reverse_base4(int *a, int n) {
-
-    int log4n = 0; // log4n是n的基4对数
-    int temp = n;  // 临时变量
+    int log4n = 0;  // log4n是n的基4对数
+    int temp = n;   // 临时变量
     while (temp > 1) {
         temp >>= 2;
         log4n++;
@@ -303,7 +303,7 @@ void reverse_base4(int *a, int n) {
         int reversed = 0;
         int num = i;
         for (int j = 0; j < log4n; j++) {
-            reversed = (reversed << 2) | (num & 3); // 每次取最低两位并左移
+            reversed = (reversed << 2) | (num & 3);  // 每次取最低两位并左移
             num >>= 2;
         }
         rev[i] = reversed;
@@ -346,7 +346,7 @@ void NTT_base4_naive(int *a, int n, bool invert, int p, int g = 3) {
             // 处理每个蝴蝶形单元
             // 这里的len是4的幂次
 
-            uint64_t w[4] = {1, 1, 1, 1}; // 当前单位根幂次
+            uint64_t w[4] = {1, 1, 1, 1};  // 当前单位根幂次
 
             // 当前单位根幂次
             uint64_t u[4];
@@ -423,7 +423,6 @@ void NTT_multiply_base4_Naive(int *a, int *b, int *result, int n, int p) {
 
 uint64_t a[300000], b[300000], ab[300000];
 int main(int argc, char *argv[]) {
-
     // 保证输入的所有模数的原根均为 3, 且模数都能表示为 a \times 4 ^ k + 1
     // 的形式 输入模数分别为 7340033 104857601 469762049 1337006139375617
     // 第四个模数超过了整型表示范围,

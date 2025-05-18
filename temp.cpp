@@ -8,7 +8,7 @@ void reverse(int *a, int n, int bit) {
     }
     for (int i = 0; i < n; i++) {
         if (i < rev[i]) {
-            std::swap(a[i], a[rev[i]]); // 位逆序置换
+            std::swap(a[i], a[rev[i]]);  // 位逆序置换
         }
     }
     delete[] rev;

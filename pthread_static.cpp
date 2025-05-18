@@ -379,30 +379,33 @@ void NTT_multiply_persistent(uint64_t *a, uint64_t *b, uint64_t *result, int n,
     }
 }
 
+#define MOD_COUNT 4
+// 全局静态数组
+static uint64_t mod_results_pool[MOD_COUNT][MAX_LEN];
+static uint64_t *mod_results_ptrs[MOD_COUNT];
 // 使用CRT和持久线程的多项式乘法
 void CRT_NTT_multiply_persistent(uint64_t *a, uint64_t *b, uint64_t *result,
                                  int n, uint64_t p, pthread_t *threads) {
     // 使用多个小模数，确保它们都是NTT友好的（形如k·2^m+1）
-    uint64_t mod_list[4] = {1004535809, 1224736769, 469762049, 998244353};
-    int mod_count = 4;
+    uint64_t mod_list[MOD_COUNT] = {1004535809, 1224736769, 469762049,
+                                    998244353};
 
-    // 分配结果数组
-    uint64_t **mod_results = new uint64_t *[mod_count];
-    for (int i = 0; i < mod_count; i++) {
-        mod_results[i] = new uint64_t[2 * n - 1];
-        memset(mod_results[i], 0, sizeof(uint64_t) * (2 * n - 1));
+    // 使用静态分配的内存池
+    for (int i = 0; i < MOD_COUNT; i++) {
+        mod_results_ptrs[i] = mod_results_pool[i];
     }
 
     // 逐个模数计算NTT
-    for (int i = 0; i < mod_count; i++) {
-        NTT_multiply_persistent(a, b, mod_results[i], n, mod_list[i], threads);
+    for (int i = 0; i < MOD_COUNT; i++) {
+        NTT_multiply_persistent(a, b, mod_results_ptrs[i], n, mod_list[i],
+                                threads);
     }
 
     // 使用CRT合并结果
     task_state.current_task = TASK_CRT_COMBINE;
-    task_state.mod_results = mod_results;
+    task_state.mod_results = (uint64_t **)mod_results_ptrs;
     task_state.mod_list = mod_list;
-    task_state.mod_count = mod_count;
+    task_state.mod_count = MOD_COUNT;
     task_state.result = result;
     task_state.n = 2 * n - 1;
     task_state.p = p;
@@ -412,19 +415,13 @@ void CRT_NTT_multiply_persistent(uint64_t *a, uint64_t *b, uint64_t *result,
 
     // 等待所有线程完成
     pthread_barrier_wait(&barrier);
-
-    // 释放内存
-    for (int i = 0; i < mod_count; i++) {
-        delete[] mod_results[i];
-    }
-    delete[] mod_results;
 }
 
 uint64_t a[300000], b[300000], ab[300000];
 pthread_t threads[NUM_THREADS];
 int main(int argc, char *argv[]) {
     // 测试用例
-    int test_begin = 0;
+    int test_begin = 4;
     int test_end = 4;
     for (int i = test_begin; i <= test_end; ++i) {
         std::cout << "test " << i << std::endl;
