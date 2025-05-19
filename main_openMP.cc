@@ -1,5 +1,7 @@
 #include <omp.h>
+#include <pthread.h>
 #include <sys/time.h>
+
 #include <algorithm>
 #include <chrono>
 #include <cmath>
@@ -9,7 +11,6 @@
 #include <iomanip>
 #include <iostream>
 #include <string>
-#include<pthread.h>
 
 #define NUM_THREADS 8
 
@@ -88,7 +89,6 @@ uint64_t pow(uint64_t base, uint64_t exp, uint64_t mod) {
 // 预分配内存池，避免重复动态分配
 constexpr int MAX_LEN = 1 << 22;  // 根据最大处理规模设置
 
-
 // OpenMP版位逆序置换
 void reverse(uint64_t *a, int n, int bit) {
     int *rev = new int[n];
@@ -96,7 +96,7 @@ void reverse(uint64_t *a, int n, int bit) {
     for (int i = 0; i < n; i++) {
         rev[i] = (rev[i >> 1] >> 1) | ((i & 1) << (bit - 1));
     }
-    #pragma omp parallel for schedule(static)
+#pragma omp parallel for schedule(static)
     for (int i = 0; i < n; i++) {
         if (i < rev[i]) {
             uint64_t tmp = a[i];
@@ -110,21 +110,23 @@ void reverse(uint64_t *a, int n, int bit) {
 // OpenMP版NTT
 void NTT_parallel(uint64_t *a, uint64_t n, bool invert, uint64_t p, int g = 3) {
     int bit = 0;
-    while ((1 << bit) < n) bit++;
+    while ((1 << bit) < n)
+        bit++;
     reverse(a, n, bit);
 
     for (int len = 2; len <= n; len <<= 1) {
         uint64_t g_n = invert ? pow(g, (p - 1) - (p - 1) / len, p)
                               : pow(g, (p - 1) / len, p);
-        #pragma omp parallel for schedule(static)
+#pragma omp parallel for schedule(static)
         for (int i = 0; i < n; i += len) {
             uint64_t gk = 1;
             int step = len >> 1;
             for (int j = 0; j < step; j++) {
-                uint64_t u = a[i + j] ;
+                uint64_t u = a[i + j];
                 uint64_t v = a[i + j + step] * gk % p;
                 uint64_t sum = u + v;
-                if (sum >= p) sum -= p;
+                if (sum >= p)
+                    sum -= p;
                 uint64_t diff = u >= v ? u - v : u + p - v;
                 a[i + j] = sum;
                 a[i + j + step] = diff;
@@ -134,37 +136,36 @@ void NTT_parallel(uint64_t *a, uint64_t n, bool invert, uint64_t p, int g = 3) {
     }
     if (invert) {
         uint64_t inv_n = pow(n, p - 2, p);
-        #pragma omp parallel for schedule(static)
+#pragma omp parallel for schedule(static)
         for (int i = 0; i < n; i++) {
             a[i] = a[i] * inv_n % p;
         }
     }
 }
 
-
 // OpenMP版多项式乘法
 void NTT_multiply_parallel(uint64_t *a, uint64_t *b, uint64_t *result, int n, uint64_t p) {
     int len = (n << 1);
     uint64_t *fa = new uint64_t[len];
     uint64_t *fb = new uint64_t[len];
-    #pragma omp parallel for schedule(static)
+#pragma omp parallel for schedule(static)
     for (int i = 0; i < n; i++) {
         fa[i] = a[i];
         fb[i] = b[i];
     }
-    #pragma omp parallel for schedule(static)
+#pragma omp parallel for schedule(static)
     for (int i = n; i < len; i++) {
         fa[i] = fb[i] = 0;
     }
     int g = 3;
     NTT_parallel(fa, len, false, p, g);
     NTT_parallel(fb, len, false, p, g);
-    #pragma omp parallel for schedule(static)
+#pragma omp parallel for schedule(static)
     for (int i = 0; i < len; i++) {
         fa[i] = fa[i] * fb[i] % p;
     }
     NTT_parallel(fa, len, true, p, g);
-    #pragma omp parallel for schedule(static)
+#pragma omp parallel for schedule(static)
     for (int i = 0; i < 2 * n - 1; i++) {
         result[i] = fa[i];
     }
@@ -176,24 +177,24 @@ void NTT_multiply_parallel_big(uint64_t *a, uint64_t *b, uint64_t *result, int n
     int len = (n << 1);
     uint64_t *fa = new uint64_t[len];
     uint64_t *fb = new uint64_t[len];
-    #pragma omp parallel for schedule(static)
+#pragma omp parallel for schedule(static)
     for (int i = 0; i < n; i++) {
-        fa[i] = a[i] %p;
-        fb[i] = b[i] %p;
+        fa[i] = a[i] % p;
+        fb[i] = b[i] % p;
     }
-    #pragma omp parallel for schedule(static)
+#pragma omp parallel for schedule(static)
     for (int i = n; i < len; i++) {
         fa[i] = fb[i] = 0;
     }
     int g = 3;
     NTT_parallel(fa, len, false, p, g);
     NTT_parallel(fb, len, false, p, g);
-    #pragma omp parallel for schedule(static)
+#pragma omp parallel for schedule(static)
     for (int i = 0; i < len; i++) {
         fa[i] = fa[i] * fb[i] % p;
     }
     NTT_parallel(fa, len, true, p, g);
-    #pragma omp parallel for schedule(static)
+#pragma omp parallel for schedule(static)
     for (int i = 0; i < 2 * n - 1; i++) {
         result[i] = fa[i];
     }
@@ -251,21 +252,21 @@ void cleanup_global_crt_values() {
 void CRT_NTT_multiply_openmp(uint64_t *a, uint64_t *b, uint64_t *result, int n, uint64_t p) {
     // 使用全局预分配的模数和结果数组
     int result_len = 2 * n - 1;
-    
-    // 清零结果数组的必要部分
-    #pragma omp parallel for num_threads(GLOBAL_MOD_COUNT)
+
+// 清零结果数组的必要部分
+#pragma omp parallel for num_threads(GLOBAL_MOD_COUNT)
     for (int i = 0; i < GLOBAL_MOD_COUNT; i++) {
         memset(GLOBAL_MOD_RESULTS[i], 0, sizeof(uint64_t) * result_len);
     }
 
-    // 逐个模数计算NTT - 可并行执行
-    #pragma omp parallel for num_threads(GLOBAL_MOD_COUNT)
+// 逐个模数计算NTT - 可并行执行
+#pragma omp parallel for num_threads(GLOBAL_MOD_COUNT)
     for (int i = 0; i < GLOBAL_MOD_COUNT; i++) {
         NTT_multiply_parallel_big(a, b, GLOBAL_MOD_RESULTS[i], n, GLOBAL_MOD_LIST[i]);
     }
 
-    // 使用CRT合并结果
-    #pragma omp parallel for num_threads(NUM_THREADS) schedule(static)
+// 使用CRT合并结果
+#pragma omp parallel for num_threads(NUM_THREADS) schedule(static)
     for (int j = 0; j < result_len; j++) {
         // 完全展开4个模数的循环
         __uint128_t term0 = GLOBAL_MI_VALUES[0] * ((GLOBAL_MOD_RESULTS[0][j] * GLOBAL_MI_INV_VALUES[0]) % GLOBAL_MOD_LIST[0]);
@@ -274,7 +275,7 @@ void CRT_NTT_multiply_openmp(uint64_t *a, uint64_t *b, uint64_t *result, int n, 
         __uint128_t term3 = GLOBAL_MI_VALUES[3] * ((GLOBAL_MOD_RESULTS[3][j] * GLOBAL_MI_INV_VALUES[3]) % GLOBAL_MOD_LIST[3]);
 
         // 分批次累加避免中间溢出
-        __uint128_t sum = (term0 + term1 +term2 +term3) % GLOBAL_M;
+        __uint128_t sum = (term0 + term1 + term2 + term3) % GLOBAL_M;
 
         result[j] = sum % p;
     }
@@ -285,7 +286,7 @@ uint64_t a[300000], b[300000], ab[300000];
 int main(int argc, char *argv[]) {
     // 初始化OpenMP线程数
     omp_set_num_threads(NUM_THREADS);
-    
+
     // 初始化CRT全局变量
     init_global_crt_values();
 
@@ -298,20 +299,20 @@ int main(int argc, char *argv[]) {
         uint64_t p_;
         fRead(a, b, &n_, &p_, i);
         memset(ab, 0, sizeof(ab));
-        
+
         auto Start = std::chrono::high_resolution_clock::now();
-        
+
         // 根据模数大小选择算法
         if (p_ > (1ULL << 32)) {
             CRT_NTT_multiply_openmp(a, b, ab, n_, p_);
         } else {
             NTT_multiply_parallel(a, b, ab, n_, p_);
         }
-        
+
         auto End = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double, std::ratio<1, 1000>> elapsed = End - Start;
         ans += elapsed.count();
-        
+
         fCheck(ab, n_, i);
         std::cout << "average latency for n = " << n_ << " p = " << p_ << " : "
                   << ans << " (us) " << std::endl;
@@ -319,7 +320,7 @@ int main(int argc, char *argv[]) {
         // 结果输出
         fWrite(ab, n_, i);
     }
-    
+
     // 清理全局资源
     cleanup_global_crt_values();
 
