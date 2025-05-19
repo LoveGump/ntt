@@ -1,0 +1,635 @@
+#include <pthread.h>
+#include <sys/time.h>
+#include <algorithm>
+#include <atomic>
+#include <chrono>
+#include <cmath>
+#include <complex>
+#include <cstring>
+#include <fstream>
+#include <iomanip>
+#include <iostream>
+#include <string>
+
+#define NUM_THREADS 8
+
+// 可以自行添加需要的头文件
+
+void fRead(uint64_t *a, uint64_t *b, int *n, uint64_t *p, int input_id) {
+    // 数据输入函数
+    std::string str1 = "/nttdata/";
+    std::string str2 = std::to_string(input_id);
+    std::string strin = str1 + str2 + ".in";
+    char data_path[strin.size() + 1];
+    std::copy(strin.begin(), strin.end(), data_path);
+    data_path[strin.size()] = '\0';
+    std::ifstream fin;
+    fin.open(data_path, std::ios::in);
+    fin >> *n >> *p;
+    for (uint64_t i = 0; i < *n; i++) {
+        fin >> a[i];
+    }
+    for (uint64_t i = 0; i < *n; i++) {
+        fin >> b[i];
+    }
+}
+
+void fCheck(uint64_t *ab, int n, int input_id) {
+    // 判断多项式乘法结果是否正确
+    std::string str1 = "/nttdata/";
+    std::string str2 = std::to_string(input_id);
+    std::string strout = str1 + str2 + ".out";
+    char data_path[strout.size() + 1];
+    std::copy(strout.begin(), strout.end(), data_path);
+    data_path[strout.size()] = '\0';
+    std::ifstream fin;
+    fin.open(data_path, std::ios::in);
+    for (int i = 0; i < n * 2 - 1; i++) {
+        uint64_t x;
+        fin >> x;
+        if (x != ab[i]) {
+            std::cout << "多项式乘法结果错误" << std::endl;
+            return;
+        }
+    }
+    std::cout << "多项式乘法结果正确" << std::endl;
+    return;
+}
+
+void fWrite(uint64_t *ab, int n, int input_id) {
+    // 数据输出函数, 可以用来输出最终结果, 也可用于调试时输出中间数组
+    std::string str1 = "files/";
+    std::string str2 = std::to_string(input_id);
+    std::string strout = str1 + str2 + ".out";
+    char output_path[strout.size() + 1];
+    std::copy(strout.begin(), strout.end(), output_path);
+    output_path[strout.size()] = '\0';
+    std::ofstream fout;
+    fout.open(output_path, std::ios::out);
+    for (int i = 0; i < n * 2 - 1; i++) {
+        fout << ab[i] << '\n';
+    }
+}
+
+// 幂取模
+uint64_t pow(uint64_t base, uint64_t exp, uint64_t mod) {
+    uint64_t res = 1;
+    base %= mod;
+    while (exp > 0) {
+        if (exp & 1) {
+            res = res * base % mod;
+        }
+        base = base * base % mod;
+        exp >>= 1;
+    }
+    return res;
+}
+
+// 全局变量和屏障
+pthread_barrier_t barrier;  // 屏障
+std::atomic<bool> thread_exit(false);
+
+// 任务类型枚举
+enum TaskType {
+    TASK_REVERSE,      // 位逆序置换任务
+    TASK_NTT,          // NTT任务
+    TASK_MULTIPLY,     // 多项式点值乘法
+    TASK_APPLY_INV_N,  // 应用逆元
+    TASK_CRT_COMBINE,  // CRT合并
+    TASK_EXIT          // 退出任务
+};
+
+// 全局共享任务状态
+struct GlobalTaskState {
+    TaskType current_task;
+
+    // 通用参数
+    uint64_t *a;       // 输入多项式A
+    uint64_t *b;       // 输入多项式B
+    uint64_t *result;  // 结果数组
+
+    int n;        // 多项式长度
+    uint64_t p;   // 模数
+    int g = 3;    // 原根
+    bool invert;  // 是否进行逆变换
+
+    // NTT任务参数
+    int current_len;  // 当前蝶形长度
+    uint64_t g_n;     // 当前单位根
+
+    // 逆序置换参数
+    int bit;   // 二进制位数
+    int *rev;  // 逆序表
+
+    // 逆元相关
+    uint64_t inv_n;  // n的逆元
+
+    // CRT相关
+    uint64_t **mod_results;  // 各模数下的结果
+    uint64_t *mod_list;      // 模数列表
+    int mod_count;           // 模数个数
+    int mod_index;           // 当前处理的模数索引
+
+    // 数据复制任务参数
+    uint64_t *dst_a;  // 目标数组A
+    uint64_t *dst_b;  // 目标数组B
+    int src_n;        // 源数组长度
+    int dst_len;      // 目标数组长度(包括填充部分)
+
+    __uint128_t M;  // 源数组A
+    __uint128_t *Mi;
+    uint64_t *Mi_inv;
+} task_state;
+
+// 预分配内存池，避免重复动态分配
+constexpr int MAX_LEN = 1 << 22;  // 根据最大处理规模设置
+uint64_t fa_pool[MAX_LEN];
+uint64_t fb_pool[MAX_LEN];
+int rev_pool[MAX_LEN];
+// 位逆序置换函数
+void parallel_reverse(uint64_t *a, int n, int bit) {
+    // 分配并初始化逆序表
+    task_state.rev = rev_pool;
+
+    // 设置逆序置换任务参数
+    task_state.current_task = TASK_REVERSE;
+    task_state.a = a;
+    task_state.n = n;
+    task_state.bit = bit;
+
+    // 唤醒工作线程执行逆序置换
+    pthread_barrier_wait(&barrier);
+
+    // 等待所有线程完成
+    pthread_barrier_wait(&barrier);
+}
+
+// 工作线程函数
+void *worker_thread(void *arg) {
+    int thread_id = *((int *)arg);  // 线程ID
+    delete (int *)arg;              // 释放分配的内存
+
+    // 持久线程主循环
+    while (!thread_exit.load(std::memory_order_acquire)) {
+        // 等待主线程分配任务
+        pthread_barrier_wait(&barrier);
+
+        // 根据当前任务类型执行相应操作
+        switch (task_state.current_task) {
+            case TASK_REVERSE: {
+                uint64_t *a = task_state.a;
+                int n = task_state.n;
+                int *rev = task_state.rev;
+
+                // 每个线程处理一部分逆序置换
+                for (int i = thread_id; i < n; i += NUM_THREADS) {
+                    if (i < rev[i]) {
+                        // 使用异或操作交换元素
+                        a[i] ^= a[rev[i]];
+                        a[rev[i]] ^= a[i];
+                        a[i] ^= a[rev[i]];
+                    }
+                }
+                break;
+            }
+
+            case TASK_NTT: {
+                uint64_t *a = task_state.a;
+                int len = task_state.current_len;
+                uint64_t p = task_state.p;
+                uint64_t g_n = task_state.g_n;
+                int n = task_state.n;
+
+                // 优化的块分配 - 每个线程处理均等数量的蝶形块
+                int blocks = (n + len - 1) / len;
+                int blocks_per_thread = (blocks + NUM_THREADS - 1) / NUM_THREADS;
+                int start_block = thread_id * blocks_per_thread;
+                int end_block = std::min((thread_id + 1) * blocks_per_thread, blocks);
+
+                for (int block = start_block; block < end_block; block++) {
+                    int i = block * len;
+                    if (i >= n)
+                        continue;
+
+                    uint64_t g = 1;  // 初始单位根为1
+                    int step = len >> 1;
+                    // 处理每个蝶形单元
+                    for (int j = 0; j < step; j++) {
+                        uint64_t u = a[i + j];  // 取模
+                        uint64_t v = (a[i + j + step] * g) % p;
+
+                        // // 高效的模加法
+                        uint64_t sum = u + v;
+                        if (sum > p)
+                            sum -= p;
+                        uint64_t diff = u <= v ? u + p - v : u - v;
+
+                        // 更新结果
+                        a[i + j] = sum;
+                        a[i + j + step] = diff;
+                        g = (g * g_n) % p;  // 更新单位根
+                    }
+                }
+                break;
+            }
+            case TASK_MULTIPLY: {
+                uint64_t *fa = task_state.a;
+                uint64_t *fb = task_state.b;
+                int len = task_state.n;
+                uint64_t p = task_state.p;
+
+                // 使用连续块处理而非跨步处理
+                int block_size = (len + NUM_THREADS - 1) / NUM_THREADS;
+                int start = thread_id * block_size;
+                int end = std::min(start + block_size, len);
+
+                // 每个线程处理连续的内存块
+                for (int i = start; i < end; i++) {
+                    fa[i] = (fa[i] * fb[i]) % p;
+                }
+                break;
+            }
+
+            case TASK_APPLY_INV_N: {
+                uint64_t *a = task_state.a;
+                int n = task_state.n;
+                uint64_t p = task_state.p;
+                uint64_t inv_n = task_state.inv_n;
+
+                // 使用连续块处理而非跨步处理
+                int block_size = (n + NUM_THREADS - 1) / NUM_THREADS;
+                int start = thread_id * block_size;
+                int end = std::min(start + block_size, n);
+
+                for (int i = start; i + 3 < end; i += 4) {
+                    // 一次处理4个元素
+                    a[i] = (a[i] * inv_n) % p;
+                    a[i + 1] = (a[i + 1] * inv_n) % p;
+                    a[i + 2] = (a[i + 2] * inv_n) % p;
+                    a[i + 3] = (a[i + 3] * inv_n) % p;
+                }
+
+                // 处理剩余元素
+                for (int i = start + ((end - start) / 4) * 4; i < end; i++) {
+                    a[i] = (a[i] * inv_n) % p;
+                }
+
+                break;
+            }
+
+            case TASK_CRT_COMBINE: {
+                // CRT合并任务，每个线程处理部分结果
+                uint64_t **results = task_state.mod_results;
+                uint64_t *mod_list = task_state.mod_list;
+                uint64_t *final_result = task_state.result;
+                int result_length = task_state.n;
+                uint64_t p = task_state.p;
+
+                // 计算模数乘积
+                __uint128_t M = task_state.M;
+
+                // 预计算所有Mi和Mi_inv (针对4个固定模数)
+                __uint128_t *Mi_values = task_state.Mi;
+                uint64_t *Mi_inv_values = task_state.Mi_inv;
+
+                // 使用连续块处理
+                int block_size = (result_length + NUM_THREADS - 1) / NUM_THREADS;
+                int start = thread_id * block_size;
+                int end = std::min(start + block_size, result_length);
+
+                // 处理连续内存块
+                for (int j = start; j < end; j++) {
+                    // 完全展开4个模数的循环
+                    __uint128_t term0 = Mi_values[0] * ((results[0][j] * Mi_inv_values[0]) % mod_list[0]);
+                    __uint128_t term1 = Mi_values[1] * ((results[1][j] * Mi_inv_values[1]) % mod_list[1]);
+                    __uint128_t term2 = Mi_values[2] * ((results[2][j] * Mi_inv_values[2]) % mod_list[2]);
+                    __uint128_t term3 = Mi_values[3] * ((results[3][j] * Mi_inv_values[3]) % mod_list[3]);
+
+                    // 分批次累加避免中间溢出
+                    __uint128_t sum = (term0 + term1) % M;
+                    sum = (sum + term2) % M;
+                    sum = (sum + term3) % M;
+
+                    final_result[j] = sum % p;
+                }
+                break;
+            }
+            case TASK_EXIT:
+                return NULL;  // 退出任务
+                break;
+            default:
+                break;
+        }
+        // 等待所有线程完成当前任务
+        pthread_barrier_wait(&barrier);
+    }
+
+    return NULL;
+}
+
+// 使用持久线程的NTT实现
+void NTT_persistent(uint64_t *a, int n, bool invert, uint64_t p, int bit,
+                    int g = 3) {
+    // 设置基本任务参数
+    task_state.a = a;
+    task_state.n = n;
+    task_state.p = p;
+    task_state.invert = invert;
+
+    // 蝶形操作
+    for (int len = 2; len <= n; len <<= 1) {
+        // 更新当前任务状态
+        task_state.current_task = TASK_NTT;
+        task_state.current_len = len;
+        task_state.g_n = invert ? pow(g, (p - 1) - (p - 1) / len, p)
+                                : pow(g, (p - 1) / len, p);
+
+        // 唤醒工作线程
+        pthread_barrier_wait(&barrier);
+
+        // 等待所有线程完成当前任务
+        pthread_barrier_wait(&barrier);
+    }
+
+    // 如果是逆变换，需要除以n（即乘以n的模p逆元），并行处理
+    if (invert) {
+        task_state.current_task = TASK_APPLY_INV_N;
+        task_state.inv_n = pow(n, p - 2, p);  // 使用费马小定理计算逆元
+
+        // 唤醒工作线程应用逆元
+        pthread_barrier_wait(&barrier);
+
+        // 等待所有线程完成
+        pthread_barrier_wait(&barrier);
+    }
+}
+
+// 使用持久线程的多项式乘法
+void NTT_multiply_persistent(uint64_t *a, uint64_t *b, uint64_t *result, int n,
+                             uint64_t p, pthread_t *threads) {
+    // 计算可以容纳结果的2的幂次长度
+    int len = (n << 1);
+
+    // 使用预分配的内存池
+    uint64_t *fa = fa_pool;
+    uint64_t *fb = fb_pool;
+
+    for (int i = 0; i < n; i++) {
+        fa[i] = a[i];
+        fb[i] = b[i];
+    }
+    for (int i = n; i < len; i++) {
+        fa[i] = fb[i] = 0;
+    }
+
+    // 计算二进制位数
+    int bit = 0;
+    while ((1 << bit) < len)
+        bit++;
+
+    // 正向NTT
+    auto rev = rev_pool;
+    rev[0] = 0;
+
+    // 计算逆序表
+    for (int i = 0; i < len; i++) {
+        rev[i] = (rev[i >> 1] >> 1) | ((i & 1) << (bit - 1));
+    }
+    // 位逆序置换
+    parallel_reverse(fa, len, bit);
+    // 位逆序置换
+    parallel_reverse(fb, len, bit);
+    NTT_persistent(fa, len, false, p, bit);
+    NTT_persistent(fb, len, false, p, bit);
+
+    // 点值乘法
+    task_state.current_task = TASK_MULTIPLY;
+    task_state.a = fa;
+    task_state.b = fb;
+    task_state.n = len;
+    task_state.p = p;
+
+    // 唤醒工作线程执行点值乘法
+    pthread_barrier_wait(&barrier);
+
+    // 等待所有线程完成
+    pthread_barrier_wait(&barrier);
+
+    // 逆向NTT
+    // 位逆序置换
+    parallel_reverse(fa, len, bit);
+    NTT_persistent(fa, len, true, p, bit);
+
+    // 复制结果
+    for (int i = 0; i < len; i++) {
+        result[i] = fa[i];
+    }
+}
+
+// 使用持久线程的多项式乘法
+void NTT_multiply_persistent_big(uint64_t *a, uint64_t *b, uint64_t *result, int n,
+                             uint64_t p, pthread_t *threads) {
+    // 计算可以容纳结果的2的幂次长度
+    int len = (n << 1);
+
+    // 使用预分配的内存池
+    uint64_t *fa = fa_pool;
+    uint64_t *fb = fb_pool;
+
+    for (int i = 0; i < n; i++) {
+        fa[i] = a[i] % p;
+        fb[i] = b[i] % p;
+    }
+    for (int i = n; i < len; i++) {
+        fa[i] = fb[i] = 0;
+    }
+
+    // 计算二进制位数
+    int bit = 0;
+    while ((1 << bit) < len)
+        bit++;
+
+    // 正向NTT
+    auto rev = rev_pool;
+    rev[0] = 0;
+
+    // 计算逆序表
+    for (int i = 0; i < len; i++) {
+        rev[i] = (rev[i >> 1] >> 1) | ((i & 1) << (bit - 1));
+    }
+    // 位逆序置换
+    parallel_reverse(fa, len, bit);
+    // 位逆序置换
+    parallel_reverse(fb, len, bit);
+    NTT_persistent(fa, len, false, p, bit);
+    NTT_persistent(fb, len, false, p, bit);
+
+    // 点值乘法
+    task_state.current_task = TASK_MULTIPLY;
+    task_state.a = fa;
+    task_state.b = fb;
+    task_state.n = len;
+    task_state.p = p;
+
+    // 唤醒工作线程执行点值乘法
+    pthread_barrier_wait(&barrier);
+
+    // 等待所有线程完成
+    pthread_barrier_wait(&barrier);
+
+    // 逆向NTT
+    // 位逆序置换
+    parallel_reverse(fa, len, bit);
+    NTT_persistent(fa, len, true, p, bit);
+
+    // 复制结果
+    for (int i = 0; i < len; i++) {
+        result[i] = fa[i];
+    }
+}
+// 添加全局静态变量，避免重复创建和销毁
+// NTT友好的4个固定模数
+const uint64_t GLOBAL_MOD_LIST[4] = {1004535809, 1224736769, 469762049, 998244353};
+const int GLOBAL_MOD_COUNT = 4;
+
+// 预分配的结果数组，避免动态分配
+uint64_t *GLOBAL_MOD_RESULTS[4] = {nullptr, nullptr, nullptr, nullptr};
+
+// 预计算模数乘积及逆元相关值
+__uint128_t GLOBAL_M = 0;          // 模数乘积
+__uint128_t GLOBAL_MI_VALUES[4];   // 各模数的"M/模数"值
+uint64_t GLOBAL_MI_INV_VALUES[4];  // 各模数的逆元值
+
+// 预计算模数相关的常数
+void init_global_crt_values() {
+    // 计算模数乘积
+    GLOBAL_M = 1;
+    for (int i = 0; i < GLOBAL_MOD_COUNT; i++) {
+        GLOBAL_M *= GLOBAL_MOD_LIST[i];
+    }
+
+    // 预计算Mi和Mi_inv值
+    for (int i = 0; i < GLOBAL_MOD_COUNT; i++) {
+        uint64_t mod_num = GLOBAL_MOD_LIST[i];
+        GLOBAL_MI_VALUES[i] = GLOBAL_M / mod_num;
+        uint64_t Mi_mod = GLOBAL_MI_VALUES[i] % mod_num;
+        GLOBAL_MI_INV_VALUES[i] = pow(Mi_mod, mod_num - 2, mod_num);
+    }
+
+    // 分配结果数组 - 使用最大可能的多项式长度
+    constexpr int MAX_RESULT_LEN = 2 * 300000;  // 2*max_n
+    for (int i = 0; i < GLOBAL_MOD_COUNT; i++) {
+        GLOBAL_MOD_RESULTS[i] = new uint64_t[MAX_RESULT_LEN];
+    }
+}
+
+// 释放全局资源
+void cleanup_global_crt_values() {
+    for (int i = 0; i < GLOBAL_MOD_COUNT; i++) {
+        if (GLOBAL_MOD_RESULTS[i]) {
+            delete[] GLOBAL_MOD_RESULTS[i];
+            GLOBAL_MOD_RESULTS[i] = nullptr;
+        }
+    }
+}
+
+// 使用CRT和持久线程的多项式乘法 - 优化版
+void CRT_NTT_multiply_persistent(uint64_t *a, uint64_t *b, uint64_t *result,
+                                 int n, uint64_t p, pthread_t *threads) {
+    // 使用全局预分配的模数和结果数组
+    task_state.M = GLOBAL_M;  // 设置模数乘积
+
+    // 清零结果数组的必要部分
+    int result_len = 2 * n - 1;
+    for (int i = 0; i < GLOBAL_MOD_COUNT; i++) {
+        memset(GLOBAL_MOD_RESULTS[i], 0, sizeof(uint64_t) * result_len);
+    }
+
+    task_state.Mi = GLOBAL_MI_VALUES;          // 使用预计算的Mi值
+    task_state.Mi_inv = GLOBAL_MI_INV_VALUES;  // 使用预计算的Mi_inv值
+
+    // 逐个模数计算NTT
+    for (int i = 0; i < GLOBAL_MOD_COUNT; i++) {
+        NTT_multiply_persistent_big(a, b, GLOBAL_MOD_RESULTS[i], n, GLOBAL_MOD_LIST[i], threads);
+    }
+
+    // 使用CRT合并结果
+    task_state.current_task = TASK_CRT_COMBINE;
+    task_state.mod_results = GLOBAL_MOD_RESULTS;
+    task_state.mod_list = (uint64_t *)GLOBAL_MOD_LIST;
+    task_state.mod_count = GLOBAL_MOD_COUNT;
+    task_state.result = result;
+    task_state.n = result_len;
+    task_state.p = p;
+
+    // 唤醒工作线程执行CRT合并
+    pthread_barrier_wait(&barrier);
+
+    // 等待所有线程完成
+    pthread_barrier_wait(&barrier);
+
+    // 不需要释放内存，全局变量会被复用
+}
+
+uint64_t a[300000], b[300000], ab[300000];
+pthread_t threads[NUM_THREADS];
+int main(int argc, char *argv[]) {
+    // 测试用例
+    init_global_crt_values();
+
+    int test_begin = 0;
+    int test_end = 4;
+    for (int i = test_begin; i <= test_end; ++i) {
+        std::cout << "test " << i << std::endl;
+        long double ans = 0;
+        int n_;
+        uint64_t p_;
+        fRead(a, b, &n_, &p_, i);
+        memset(ab, 0, sizeof(ab));
+        auto Start = std::chrono::high_resolution_clock::now();
+        // 每轮重置屏障和退出标志
+        pthread_barrier_init(&barrier, NULL, NUM_THREADS + 1);
+        thread_exit.store(false, std::memory_order_release);
+
+        // 创建线程
+        for (int j = 0; j < NUM_THREADS; j++) {
+            int *thread_id = new int(j);
+            pthread_create(&threads[j], NULL, worker_thread, thread_id);
+        }
+
+        // 算法执行部分不变...
+        if (p_ > (1ULL << 32)) {
+            // 初始化全局CRT变量
+            CRT_NTT_multiply_persistent(a, b, ab, n_, p_, threads);
+            // 清理全局资源
+        } else {
+            NTT_multiply_persistent(a, b, ab, n_, p_, threads);
+        }
+
+        // 正确终止线程
+        task_state.current_task = TASK_EXIT;
+
+        pthread_barrier_wait(&barrier);
+
+        for (int j = 0; j < NUM_THREADS; j++) {
+            pthread_join(threads[j], NULL);
+        }
+
+        pthread_barrier_destroy(&barrier);
+
+        auto End = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double, std::ratio<1, 1000>> elapsed =
+            End - Start;
+        ans += elapsed.count();
+        fCheck(ab, n_, i);
+
+        std::cout << "average latency for n = " << n_ << " p = " << p_ << " : "
+                  << ans << " (us) " << std::endl;
+
+        // 结果输出
+        fWrite(ab, n_, i);
+    }
+    cleanup_global_crt_values();
+
+    return 0;
+}
