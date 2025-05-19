@@ -111,7 +111,7 @@ void NTT(uint64_t *a, int n, bool invert, uint64_t p, uint64_t g) {
         // 计算单位根，原根为g，G^((p-1)/len)
         // 如果invert为true，则单位根为g^((p-1)/len) 的逆元
         uint64_t g_n = invert ? pow(g, (p - 1) - (p - 1) / len, p)
-                         : pow(g, (p - 1) / len, p);
+                              : pow(g, (p - 1) / len, p);
 
         // 处理每个块
         for (int i = 0; i < n; i += len) {
@@ -191,13 +191,14 @@ void CRT_NTT_multiply_serial(uint64_t *a, uint64_t *b, uint64_t *result, int n, 
     int result_len = 2 * n - 1;
 
     // 堆区二维数组
-    uint64_t **mod_results = new uint64_t*[MOD_COUNT];
+    uint64_t **mod_results = new uint64_t *[MOD_COUNT];
     for (int i = 0; i < MOD_COUNT; ++i) {
         mod_results[i] = new uint64_t[result_len]();
     }
 
     __uint128_t M = 1;
-    for (int i = 0; i < MOD_COUNT; ++i) M *= MOD_LIST[i];
+    for (int i = 0; i < MOD_COUNT; ++i)
+        M *= MOD_LIST[i];
 
     // 预计算Mi和Mi_inv
     __uint128_t MI_VALUES[MOD_COUNT];
