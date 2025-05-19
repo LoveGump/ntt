@@ -1,5 +1,6 @@
 #include <pthread.h>
 #include <sys/time.h>
+
 #include <algorithm>
 #include <atomic>
 #include <chrono>
@@ -428,7 +429,7 @@ void NTT_multiply_persistent(uint64_t *a, uint64_t *b, uint64_t *result, int n,
 
 // 使用持久线程的多项式乘法
 void NTT_multiply_persistent_big(uint64_t *a, uint64_t *b, uint64_t *result, int n,
-                             uint64_t p, pthread_t *threads) {
+                                 uint64_t p, pthread_t *threads) {
     // 计算可以容纳结果的2的幂次长度
     int len = (n << 1);
 
