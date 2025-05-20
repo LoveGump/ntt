@@ -86,9 +86,10 @@ uint64_t pow(uint64_t base, uint64_t exp, uint64_t mod) {
     return res;
 }
 
+
+
 // 全局变量和屏障
 pthread_barrier_t barrier;  // 屏障
-std::atomic<bool> thread_exit(false);
 
 // 任务类型枚举
 enum TaskType {
@@ -100,7 +101,7 @@ enum TaskType {
     TASK_EXIT          // 退出任务
 };
 
-// 全局共享任务状态
+// 全局共享任务变量
 struct GlobalTaskState {
     TaskType current_task;
 
@@ -171,7 +172,7 @@ void *worker_thread(void *arg) {
     delete (int *)arg;              // 释放分配的内存
 
     // 持久线程主循环
-    while (!thread_exit.load(std::memory_order_acquire)) {
+    while (true) {
         // 等待主线程分配任务
         pthread_barrier_wait(&barrier);
 
@@ -185,10 +186,9 @@ void *worker_thread(void *arg) {
                 // 每个线程处理一部分逆序置换
                 for (int i = thread_id; i < n; i += NUM_THREADS) {
                     if (i < rev[i]) {
-                        // 使用异或操作交换元素
-                        a[i] ^= a[rev[i]];
-                        a[rev[i]] ^= a[i];
-                        a[i] ^= a[rev[i]];
+                        uint64_t temp = a[i];
+                        a[i] = a[rev[i]];
+                        a[rev[i]] = temp;
                     }
                 }
                 break;
@@ -196,48 +196,40 @@ void *worker_thread(void *arg) {
 
             case TASK_NTT: {
                 uint64_t *a = task_state.a;
-                int len = task_state.current_len;
-                uint64_t p = task_state.p;
-                uint64_t g_n = task_state.g_n;
-                int n = task_state.n;
+                int len = task_state.current_len; // 当前蝶形长度
+                uint64_t p = task_state.p; // 模数
+                uint64_t g_n = task_state.g_n; // 当前单位根
+                int n = task_state.n; // 多项式长度
 
                 // 优化的块分配 - 每个线程处理均等数量的蝶形块
-                int blocks = (n + len - 1) / len;
-                int blocks_per_thread = (blocks + NUM_THREADS - 1) / NUM_THREADS;
-                int start_block = thread_id * blocks_per_thread;
-                int end_block = std::min((thread_id + 1) * blocks_per_thread, blocks);
+                int blocks = (n + len - 1) / len; // 计算块数向上取整 
+                int blocks_per_thread = (blocks + NUM_THREADS - 1) / NUM_THREADS; // 每个线程处理的块数 向上取整
+                int start_block = thread_id * blocks_per_thread; // 每个线程的起始块 
+                int end_block = std::min((thread_id + 1) * blocks_per_thread, blocks); // 结束块
+                int step = len >> 1; // 蝶形单元的步长
 
                 for (int block = start_block; block < end_block; block++) {
                     int i = block * len;
-                    if (i >= n)
-                        continue;
-
-                    uint64_t g = 1;  // 初始单位根为1
-                    int step = len >> 1;
+                    uint64_t g_pow = 1;  // 当前单元所需的单位根的幂次
                     // 处理每个蝶形单元
                     for (int j = 0; j < step; j++) {
-                        uint64_t u = a[i + j];  // 取模
-                        uint64_t v = (a[i + j + step] * g) % p;
-
-                        // // 高效的模加法
+                        uint64_t u = a[i + j];
+                        uint64_t v = (a[i + j + step] * g_pow) % p;
                         uint64_t sum = u + v;
-                        if (sum > p)
-                            sum -= p;
+                        if (sum > p) sum -= p;                    
                         uint64_t diff = u <= v ? u + p - v : u - v;
-
-                        // 更新结果
                         a[i + j] = sum;
                         a[i + j + step] = diff;
-                        g = (g * g_n) % p;  // 更新单位根
+                        g_pow = (g_pow * g_n) % p;  // 更新单位根
                     }
                 }
                 break;
             }
             case TASK_MULTIPLY: {
-                uint64_t *fa = task_state.a;
-                uint64_t *fb = task_state.b;
-                int len = task_state.n;
-                uint64_t p = task_state.p;
+                uint64_t *fa = task_state.a; // 输入多项式A
+                uint64_t *fb = task_state.b; // 输入多项式B
+                int len = task_state.n; // 多项式长度
+                uint64_t p = task_state.p; // 模数
 
                 // 使用连续块处理而非跨步处理
                 int block_size = (len + NUM_THREADS - 1) / NUM_THREADS;
@@ -245,8 +237,11 @@ void *worker_thread(void *arg) {
                 int end = std::min(start + block_size, len);
 
                 // 每个线程处理连续的内存块
-                for (int i = start; i < end; i++) {
+                for (int i = start; i + 3 < end; i += 4) {
                     fa[i] = (fa[i] * fb[i]) % p;
+                    fa[i + 1] = (fa[i + 1] * fb[i + 1]) % p;
+                    fa[i + 2] = (fa[i + 2] * fb[i + 2]) % p;
+                    fa[i + 3] = (fa[i + 3] * fb[i + 3]) % p;
                 }
                 break;
             }
@@ -269,12 +264,6 @@ void *worker_thread(void *arg) {
                     a[i + 2] = (a[i + 2] * inv_n) % p;
                     a[i + 3] = (a[i + 3] * inv_n) % p;
                 }
-
-                // 处理剩余元素
-                for (int i = start + ((end - start) / 4) * 4; i < end; i++) {
-                    a[i] = (a[i] * inv_n) % p;
-                }
-
                 break;
             }
 
@@ -307,10 +296,7 @@ void *worker_thread(void *arg) {
                     __uint128_t term3 = Mi_values[3] * ((results[3][j] * Mi_inv_values[3]) % mod_list[3]);
 
                     // 分批次累加避免中间溢出
-                    __uint128_t sum = (term0 + term1) % M;
-                    sum = (sum + term2) % M;
-                    sum = (sum + term3) % M;
-
+                    __uint128_t sum = (term0 + term1 + term2 +term3) % M;
                     final_result[j] = sum % p;
                 }
                 break;
@@ -324,7 +310,6 @@ void *worker_thread(void *arg) {
         // 等待所有线程完成当前任务
         pthread_barrier_wait(&barrier);
     }
-
     return NULL;
 }
 
@@ -368,19 +353,28 @@ void NTT_persistent(uint64_t *a, int n, bool invert, uint64_t p, int bit,
 // 使用持久线程的多项式乘法
 void NTT_multiply_persistent(uint64_t *a, uint64_t *b, uint64_t *result, int n,
                              uint64_t p, pthread_t *threads) {
-    // 计算可以容纳结果的2的幂次长度
+    // 计算可以容纳结果的2的幂次长度 可以保证n为4的倍数 
     int len = (n << 1);
 
     // 使用预分配的内存池
     uint64_t *fa = fa_pool;
     uint64_t *fb = fb_pool;
 
-    for (int i = 0; i < n; i++) {
+    for (int i = 0; i + 3 < n; i += 4) {
         fa[i] = a[i];
+        fa[i + 1] = a[i + 1];
+        fa[i + 2] = a[i + 2];
+        fa[i + 3] = a[i + 3];
         fb[i] = b[i];
+        fb[i + 1] = b[i + 1];
+        fb[i + 2] = b[i + 2];
+        fb[i + 3] = b[i + 3];
     }
-    for (int i = n; i < len; i++) {
+    for (int i = n; i + 3 < len; i += 4) {
         fa[i] = fb[i] = 0;
+        fa[i + 1] = fb[i + 1] = 0;
+        fa[i + 2] = fb[i + 2] = 0;
+        fa[i + 3] = fb[i + 3] = 0;
     }
 
     // 计算二进制位数
@@ -393,8 +387,11 @@ void NTT_multiply_persistent(uint64_t *a, uint64_t *b, uint64_t *result, int n,
     rev[0] = 0;
 
     // 计算逆序表
-    for (int i = 0; i < len; i++) {
-        rev[i] = (rev[i >> 1] >> 1) | ((i & 1) << (bit - 1));
+    for (int i = 0; i + 3 < len; i += 4) {
+        rev[i]     = (rev[i >> 1] >> 1) | ((i & 1) << (bit - 1));
+        rev[i + 1] = (rev[(i + 1) >> 1] >> 1) | (((i + 1) & 1) << (bit - 1));
+        rev[i + 2] = (rev[(i + 2) >> 1] >> 1) | (((i + 2) & 1) << (bit - 1));
+        rev[i + 3] = (rev[(i + 3) >> 1] >> 1) | (((i + 3) & 1) << (bit - 1));
     }
     // 位逆序置换
     parallel_reverse(fa, len, bit);
@@ -422,8 +419,11 @@ void NTT_multiply_persistent(uint64_t *a, uint64_t *b, uint64_t *result, int n,
     NTT_persistent(fa, len, true, p, bit);
 
     // 复制结果
-    for (int i = 0; i < len; i++) {
-        result[i] = fa[i];
+    for (int i = 0; i + 3 < len; i += 4) {
+        result[i]     = fa[i];
+        result[i + 1] = fa[i + 1];
+        result[i + 2] = fa[i + 2];
+        result[i + 3] = fa[i + 3];
     }
 }
 
@@ -581,7 +581,6 @@ int main(int argc, char *argv[]) {
     int test_begin = 0;
     int test_end = 4;
     for (int i = test_begin; i <= test_end; ++i) {
-        std::cout << "test " << i << std::endl;
         long double ans = 0;
         int n_;
         uint64_t p_;
@@ -590,7 +589,6 @@ int main(int argc, char *argv[]) {
         auto Start = std::chrono::high_resolution_clock::now();
         // 每轮重置屏障和退出标志
         pthread_barrier_init(&barrier, NULL, NUM_THREADS + 1);
-        thread_exit.store(false, std::memory_order_release);
 
         // 创建线程
         for (int j = 0; j < NUM_THREADS; j++) {
