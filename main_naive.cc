@@ -86,7 +86,6 @@ void reverse(uint64_t *a, int n, int bit) {
     // i 的反转 = (i/2) 的反转去掉最高位后，再补上 i 的最低位作为最高位。
     rev[0] = 0;
     for (int i = 0; i < n; i++) {
-        // 二进制反转, rev[i] = 0;
         rev[i] = (rev[i >> 1] >> 1) | ((i & 1) << (bit - 1));
     }
     for (int i = 0; i < n; i++) {
@@ -104,32 +103,28 @@ void NTT(uint64_t *a, int n, bool invert, uint64_t p, uint64_t g) {
     // 位逆序置换
     reverse(a, n, bit);
 
+
     // 蝶形操作
     for (int len = 2; len <= n; len <<= 1) {
-        // len 是当前的蝶形长度，len = 2^k
-        // wlen 是当前的单位根，wlen = g^(p-1)/len
-        // 计算单位根，原根为g，G^((p-1)/len)
-        // 如果invert为true，则单位根为g^((p-1)/len) 的逆元
         uint64_t g_n = invert ? pow(g, (p - 1) - (p - 1) / len, p)
                               : pow(g, (p - 1) / len, p);
-
+        // 单位根
         // 处理每个块
         for (int i = 0; i < n; i += len) {
-            uint64_t g = 1;  // 初始单位根为1 k = 0 ，g = 1
-
+            uint64_t g_pow = 1;  // 当前单元所需的单位根的幂次
             // 处理每个蝶形单元
             for (int j = 0; j < len / 2; j++) {
                 uint64_t u = a[i + j];
-                uint64_t v = (1LL * a[i + j + len / 2] * g) % p;
-                // F(omega^k*n) = G(omega^k\_{n/2}) +
-                // omega^k_n*H(omega^k\_{n/2})
-                a[i + j] = (u + v) % p;
-                // F(omega^{k+n/2}*n) = G(omega^k*{n/2}) -
-                // omega^k_n*H(omega^k\_{n/2})
-                a[i + j + len / 2] =
-                    (u - v + p) % p;  // 注意要加上p再取模，保证结果非负
+                uint64_t v = (a[i + j + len / 2] * g_pow) % p;
 
-                g = (1LL * g * g_n) % p;  // 更新单位根
+                uint64_t sum = u + v;
+                if (sum >= p)
+                    sum -= p;
+                uint64_t diff = u >= v ? u - v : u + p - v;
+                // 高效的模加法
+                a[i + j] = sum;
+                a[i + j + len / 2] = diff;
+                g_pow = ( g_pow * g_n) % p;
             }
         }
     }
@@ -138,17 +133,14 @@ void NTT(uint64_t *a, int n, bool invert, uint64_t p, uint64_t g) {
     if (invert) {
         uint64_t inv_n = pow(n, p - 2, p);  // 使用费马小定理计算逆元
         for (int i = 0; i < n; i++) {
-            a[i] = (1LL * a[i] * inv_n) % p;
+            a[i] = (a[i] * inv_n) % p;
         }
     }
 }
 // 使用NTT的多项式乘法
 void NTT_multiply(uint64_t *a, uint64_t *b, uint64_t *result, int n, uint64_t p) {
     // 计算可以容纳结果的2的幂次长度
-    int len = 1;
-    while (len < 2 * n)
-        len <<= 1;
-
+    int len = n << 1;
     // 创建临时数组
     uint64_t *fa = new uint64_t[len];
     uint64_t *fb = new uint64_t[len];
@@ -188,7 +180,7 @@ void NTT_multiply(uint64_t *a, uint64_t *b, uint64_t *result, int n, uint64_t p)
 void CRT_NTT_multiply_serial(uint64_t *a, uint64_t *b, uint64_t *result, int n, uint64_t p) {
     constexpr int MOD_COUNT = 4;
     const uint64_t MOD_LIST[MOD_COUNT] = {1004535809, 1224736769, 469762049, 998244353};
-    int result_len = 2 * n - 1;
+    int result_len = ( n <<1 ) - 1;
 
     // 堆区二维数组
     uint64_t **mod_results = new uint64_t *[MOD_COUNT];
