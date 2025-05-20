@@ -103,7 +103,6 @@ void NTT(uint64_t *a, int n, bool invert, uint64_t p, uint64_t g) {
     // 位逆序置换
     reverse(a, n, bit);
 
-
     // 蝶形操作
     for (int len = 2; len <= n; len <<= 1) {
         uint64_t g_n = invert ? pow(g, (p - 1) - (p - 1) / len, p)
@@ -124,7 +123,7 @@ void NTT(uint64_t *a, int n, bool invert, uint64_t p, uint64_t g) {
                 // 高效的模加法
                 a[i + j] = sum;
                 a[i + j + len / 2] = diff;
-                g_pow = ( g_pow * g_n) % p;
+                g_pow = (g_pow * g_n) % p;
             }
         }
     }
@@ -180,7 +179,7 @@ void NTT_multiply(uint64_t *a, uint64_t *b, uint64_t *result, int n, uint64_t p)
 void CRT_NTT_multiply_serial(uint64_t *a, uint64_t *b, uint64_t *result, int n, uint64_t p) {
     constexpr int MOD_COUNT = 4;
     const uint64_t MOD_LIST[MOD_COUNT] = {1004535809, 1224736769, 469762049, 998244353};
-    int result_len = ( n <<1 ) - 1;
+    int result_len = (n << 1) - 1;
 
     // 堆区二维数组
     uint64_t **mod_results = new uint64_t *[MOD_COUNT];

@@ -90,12 +90,8 @@ uint64_t pow(uint64_t base, uint64_t exp, uint64_t mod) {
 constexpr int MAX_LEN = 1 << 22;  // 根据最大处理规模设置
 
 // OpenMP版位逆序置换
-void reverse(uint64_t *a, int n, int bit) {
-    int *rev = new int[n];
-    rev[0] = 0;
-    for (int i = 0; i < n; i++) {
-        rev[i] = (rev[i >> 1] >> 1) | ((i & 1) << (bit - 1));
-    }
+void reverse(uint64_t *a, int n, int bit, int *revT) {
+    int *rev = revT;
 #pragma omp parallel for schedule(static)
     for (int i = 0; i < n; i++) {
         if (i < rev[i]) {
@@ -104,16 +100,10 @@ void reverse(uint64_t *a, int n, int bit) {
             a[rev[i]] = tmp;
         }
     }
-    delete[] rev;
 }
 
 // OpenMP版NTT
 void NTT_parallel(uint64_t *a, uint64_t n, bool invert, uint64_t p, int g = 3) {
-    int bit = 0;
-    while ((1 << bit) < n)
-        bit++;
-    reverse(a, n, bit);
-
     for (int len = 2; len <= n; len <<= 1) {
         uint64_t g_n = invert ? pow(g, (p - 1) - (p - 1) / len, p)
                               : pow(g, (p - 1) / len, p);
@@ -158,19 +148,32 @@ void NTT_multiply_parallel(uint64_t *a, uint64_t *b, uint64_t *result, int n, ui
         fa[i] = fb[i] = 0;
     }
     int g = 3;
+
+    int bit = 0;
+    while ((1 << bit) < len)
+        bit++;
+    int *rev = new int[len];
+    rev[0] = 0;
+    for (int i = 0; i < len; i++) {
+        rev[i] = (rev[i >> 1] >> 1) | ((i & 1) << (bit - 1));
+    }
+    reverse(fa, len, bit, rev);
+    reverse(fb, len, bit, rev);
     NTT_parallel(fa, len, false, p, g);
     NTT_parallel(fb, len, false, p, g);
 #pragma omp parallel for schedule(static)
     for (int i = 0; i < len; i++) {
         fa[i] = fa[i] * fb[i] % p;
     }
+    reverse(fa, len, bit, rev);
     NTT_parallel(fa, len, true, p, g);
 #pragma omp parallel for schedule(static)
-    for (int i = 0; i < 2 * n - 1; i++) {
+    for (int i = 0; i < (n << 1) - 1; i++) {
         result[i] = fa[i];
     }
     delete[] fa;
     delete[] fb;
+    delete[] rev;
 }
 // OpenMP版多项式乘法
 void NTT_multiply_parallel_big(uint64_t *a, uint64_t *b, uint64_t *result, int n, uint64_t p) {
@@ -187,19 +190,32 @@ void NTT_multiply_parallel_big(uint64_t *a, uint64_t *b, uint64_t *result, int n
         fa[i] = fb[i] = 0;
     }
     int g = 3;
+
+    int bit = 0;
+    while ((1 << bit) < len)
+        bit++;
+    int *rev = new int[len];
+    rev[0] = 0;
+    for (int i = 0; i < len; i++) {
+        rev[i] = (rev[i >> 1] >> 1) | ((i & 1) << (bit - 1));
+    }
+    reverse(fa, len, bit, rev);
+    reverse(fb, len, bit, rev);
     NTT_parallel(fa, len, false, p, g);
     NTT_parallel(fb, len, false, p, g);
 #pragma omp parallel for schedule(static)
     for (int i = 0; i < len; i++) {
         fa[i] = fa[i] * fb[i] % p;
     }
+    reverse(fa, len, bit, rev);
     NTT_parallel(fa, len, true, p, g);
 #pragma omp parallel for schedule(static)
-    for (int i = 0; i < 2 * n - 1; i++) {
+    for (int i = 0; i < (n << 1) - 1; i++) {
         result[i] = fa[i];
     }
     delete[] fa;
     delete[] fb;
+    delete[] rev;
 }
 // 示例主函数
 
@@ -232,7 +248,7 @@ void init_global_crt_values() {
     }
 
     // 分配结果数组 - 使用最大可能的多项式长度
-    constexpr int MAX_RESULT_LEN = 300000;  // 2*max_n
+    constexpr int MAX_RESULT_LEN = 300000;
     for (int i = 0; i < GLOBAL_MOD_COUNT; i++) {
         GLOBAL_MOD_RESULTS[i] = new uint64_t[MAX_RESULT_LEN];
     }
@@ -251,7 +267,7 @@ void cleanup_global_crt_values() {
 // 使用CRT和OpenMP的多项式乘法
 void CRT_NTT_multiply_openmp(uint64_t *a, uint64_t *b, uint64_t *result, int n, uint64_t p) {
     // 使用全局预分配的模数和结果数组
-    int result_len = 2 * n - 1;
+    int result_len = (n << 1) - 1;
 
 // 清零结果数组的必要部分
 #pragma omp parallel for num_threads(GLOBAL_MOD_COUNT)
@@ -274,7 +290,6 @@ void CRT_NTT_multiply_openmp(uint64_t *a, uint64_t *b, uint64_t *result, int n, 
         __uint128_t term2 = GLOBAL_MI_VALUES[2] * ((GLOBAL_MOD_RESULTS[2][j] * GLOBAL_MI_INV_VALUES[2]) % GLOBAL_MOD_LIST[2]);
         __uint128_t term3 = GLOBAL_MI_VALUES[3] * ((GLOBAL_MOD_RESULTS[3][j] * GLOBAL_MI_INV_VALUES[3]) % GLOBAL_MOD_LIST[3]);
 
-        // 分批次累加避免中间溢出
         __uint128_t sum = (term0 + term1 + term2 + term3) % GLOBAL_M;
 
         result[j] = sum % p;
