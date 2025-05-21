@@ -1,0 +1,28 @@
+# started on Wed May 21 14:59:04 2025
+
+
+ Performance counter stats for './pthread':
+
+     1,644,003,013      cpu_atom/cycles/                                                        (57.83%)
+     2,108,616,814      cpu_core/cycles/                                                        (41.92%)
+     1,399,843,563      cpu_atom/instructions/           #    0.85  insn per cycle              (57.83%)
+     4,679,642,219      cpu_core/instructions/           #    2.22  insn per cycle              (49.28%)
+       168,365,441      cpu_atom/L1-dcache-loads/                                               (57.83%)
+     1,181,070,267      cpu_core/L1-dcache-loads/                                               (48.66%)
+   <not supported>      cpu_atom/L1-dcache-load-misses/                                       
+        13,656,468      cpu_core/L1-dcache-load-misses/  #    1.16% of all L1-dcache accesses   (47.69%)
+        51,147,805      cpu_core/l2_rqsts.references/                                           (48.86%)
+        15,124,114      cpu_core/l2_rqsts.miss/                                                 (49.58%)
+         1,960,094      cpu_atom/LLC-loads/                                                     (57.83%)
+         1,777,939      cpu_core/LLC-loads/                                                     (28.44%)
+                 0      cpu_atom/LLC-load-misses/                                               (57.83%)
+           393,862      cpu_core/LLC-load-misses/        #   22.15% of all LL-cache accesses    (27.77%)
+           379,763      cpu_atom/branch-misses/                                                 (57.83%)
+         1,414,097      cpu_core/branch-misses/                                                 (33.91%)
+
+       0.237529062 seconds time elapsed
+
+       0.548106000 seconds user
+       0.038879000 seconds sys
+
+

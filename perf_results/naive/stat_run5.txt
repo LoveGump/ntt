@@ -1,0 +1,28 @@
+# started on Wed May 21 14:58:59 2025
+
+
+ Performance counter stats for './naive':
+
+     1,493,293,664      cpu_atom/cycles/                                                        (0.02%)
+     2,068,167,574      cpu_core/cycles/                                                        (66.68%)
+     1,038,679,199      cpu_atom/instructions/           #    0.70  insn per cycle              (0.02%)
+     3,957,351,959      cpu_core/instructions/           #    1.91  insn per cycle              (77.77%)
+       243,687,391      cpu_atom/L1-dcache-loads/                                               (0.02%)
+       849,629,279      cpu_core/L1-dcache-loads/                                               (77.77%)
+   <not supported>      cpu_atom/L1-dcache-load-misses/                                       
+         7,831,705      cpu_core/L1-dcache-load-misses/  #    0.92% of all L1-dcache accesses   (77.77%)
+        39,296,338      cpu_core/l2_rqsts.references/                                           (77.77%)
+        13,203,195      cpu_core/l2_rqsts.miss/                                                 (77.80%)
+         2,023,381      cpu_atom/LLC-loads/                                                     (0.02%)
+         1,529,328      cpu_core/LLC-loads/                                                     (44.41%)
+                 0      cpu_atom/LLC-load-misses/                                               (0.02%)
+           358,207      cpu_core/LLC-load-misses/        #   23.42% of all LL-cache accesses    (44.38%)
+        10,066,535      cpu_atom/branch-misses/                                                 (0.02%)
+         1,138,940      cpu_core/branch-misses/                                                 (55.48%)
+
+       0.405916134 seconds time elapsed
+
+       0.382796000 seconds user
+       0.022987000 seconds sys
+
+

@@ -1,0 +1,28 @@
+# started on Wed May 21 14:59:01 2025
+
+
+ Performance counter stats for './openMP':
+
+     1,312,892,826      cpu_atom/cycles/                                                        (50.29%)
+     4,295,142,853      cpu_core/cycles/                                                        (54.39%)
+       538,590,018      cpu_atom/instructions/           #    0.41  insn per cycle              (50.29%)
+     4,498,606,144      cpu_core/instructions/           #    1.05  insn per cycle              (63.50%)
+        75,065,348      cpu_atom/L1-dcache-loads/                                               (50.29%)
+     1,003,115,704      cpu_core/L1-dcache-loads/                                               (63.48%)
+   <not supported>      cpu_atom/L1-dcache-load-misses/                                       
+        16,417,505      cpu_core/L1-dcache-load-misses/  #    1.64% of all L1-dcache accesses   (63.35%)
+        49,339,540      cpu_core/l2_rqsts.references/                                           (63.41%)
+        15,055,137      cpu_core/l2_rqsts.miss/                                                 (63.60%)
+           645,294      cpu_atom/LLC-loads/                                                     (50.29%)
+         1,563,314      cpu_core/LLC-loads/                                                     (36.14%)
+               367      cpu_atom/LLC-load-misses/        #    0.06% of all LL-cache accesses    (50.29%)
+           411,431      cpu_core/LLC-load-misses/        #   26.32% of all LL-cache accesses    (36.16%)
+           812,026      cpu_atom/branch-misses/                                                 (50.29%)
+         1,285,223      cpu_core/branch-misses/                                                 (45.33%)
+
+       0.215786142 seconds time elapsed
+
+       1.020995000 seconds user
+       0.038734000 seconds sys
+
+

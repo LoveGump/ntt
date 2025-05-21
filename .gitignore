@@ -4,6 +4,8 @@
 # 然后仅包含这些文件夹
 !nttdata/
 !files/
+!perf_results/
+!perf_results/visualizations/
 
 # 允许这些源代码文件类型
 !*.cc
@@ -12,6 +14,17 @@
 !*.in
 !*.out
 !*.sh
+
+# 允许数据和图像文件
+!*.csv
+!*.txt
+!*.png
+!*.jpg
+!*.jpeg
+!*.gif
+!*.bmp
+!*.svg
+!*.pdf
 
 # 允许 .gitignore 本身
 !.gitignore
