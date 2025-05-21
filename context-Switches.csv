@@ -1,0 +1,4 @@
+Program,Context-Switches,CPU-Migrations,Elapsed-Time(sec),User-Time(sec),Sys-Time(sec)
+openMP,57,24,0.242188955,1.093908000,0.033966000
+pthread,6433,150,0.243907260,0.552781000,0.054983000
+naive,0,0,0.243907260,0.437022000,0.019000000

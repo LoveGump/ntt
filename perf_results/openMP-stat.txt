@@ -1,0 +1,18 @@
+# started on Wed May 21 19:52:33 2025
+
+
+ Performance counter stats for './openMP':
+
+     1,571,555,388      cpu_atom/cycles/                                                        (23.98%)
+     4,323,525,420      cpu_core/cycles/                                                        (92.66%)
+     1,058,439,418      cpu_atom/instructions/           #    0.67  insn per cycle              (23.98%)
+     3,940,280,098      cpu_core/instructions/           #    0.91  insn per cycle              (92.66%)
+                57      context-switches                                                      
+                24      cpu-migrations                                                        
+
+       0.242188955 seconds time elapsed
+
+       1.093908000 seconds user
+       0.033966000 seconds sys
+
+
