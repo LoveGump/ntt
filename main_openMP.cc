@@ -13,7 +13,17 @@
 #include <string>
 
 #define NUM_THREADS 8
+// NTT友好的4个固定模数
+const uint64_t GLOBAL_MOD_LIST[4] = {1004535809, 1224736769, 469762049, 998244353};
+const int GLOBAL_MOD_COUNT = 4;
 
+// 预分配的结果数组，避免动态分配
+uint64_t *GLOBAL_MOD_RESULTS[4] = {nullptr, nullptr, nullptr, nullptr};
+
+// 预计算模数乘积及逆元相关值
+__uint128_t GLOBAL_M = 0;          // 模数乘积
+__uint128_t GLOBAL_MI_VALUES[4];   // 各模数的"M/模数"值
+uint64_t GLOBAL_MI_INV_VALUES[4];  // 各模数的逆元值
 // 可以自行添加需要的头文件
 
 void fRead(uint64_t *a, uint64_t *b, int *n, uint64_t *p, int input_id) {
@@ -72,7 +82,12 @@ void fWrite(uint64_t *ab, int n, int input_id) {
     }
 }
 
-// 幂取模
+/**
+ * @brief 快速幂函数
+ * @param base 底数
+ * @param exp 指数
+ * @param mod 模数
+ */
 uint64_t pow(uint64_t base, uint64_t exp, uint64_t mod) {
     uint64_t res = 1;
     base %= mod;
@@ -87,12 +102,20 @@ uint64_t pow(uint64_t base, uint64_t exp, uint64_t mod) {
 }
 
 // 预分配内存池，避免重复动态分配
-constexpr int MAX_LEN = 1 << 22;  // 根据最大处理规模设置
+constexpr int MAX_LEN = 1 << 18;  // 根据最大处理规模设置
 
-// OpenMP版位逆序置换
-void reverse(uint64_t *a, int n, int bit, int *revT) {
+/**
+ * @brief 位逆序置换函数
+ * @param a 输入数组
+ * @param n 数组长度
+ * @param bit log2(n)向上取整
+ * @param revT 预分配的逆序表
+ * @param num_threads NUM_THREADS 线程数
+ * @details 该函数实现了位逆序置换，使用OpenMP并行化处理。
+ */
+void reverse(uint64_t *a, int n, int bit, int *revT, int num_threads = NUM_THREADS) {
     int *rev = revT;
-#pragma omp parallel for schedule(static)
+#pragma omp parallel for schedule(static) num_threads(num_threads)
     for (int i = 0; i < n; i++) {
         if (i < rev[i]) {
             uint64_t tmp = a[i];
@@ -102,12 +125,20 @@ void reverse(uint64_t *a, int n, int bit, int *revT) {
     }
 }
 
-// OpenMP版NTT
-void NTT_parallel(uint64_t *a, uint64_t n, bool invert, uint64_t p, int g = 3) {
+/**
+ * @brief NTT变换函数
+ * @param a 输入数组
+ * @param n 数组长度
+ * @param invert 是否进行逆变换
+ * @param p 模数
+ * @param num_threads NUM_THREADS  线程数
+ * @param g  3 原根
+ */
+void NTT_parallel(uint64_t *a, uint64_t n, bool invert, uint64_t p, int num_threads = NUM_THREADS, int g = 3 ) {
     for (int len = 2; len <= n; len <<= 1) {
         uint64_t g_n = invert ? pow(g, (p - 1) - (p - 1) / len, p)
                               : pow(g, (p - 1) / len, p);
-#pragma omp parallel for schedule(static)
+#pragma omp parallel for schedule(static) num_threads(num_threads)
         for (int i = 0; i < n; i += len) {
             uint64_t gk = 1;
             int step = len >> 1;
@@ -126,24 +157,32 @@ void NTT_parallel(uint64_t *a, uint64_t n, bool invert, uint64_t p, int g = 3) {
     }
     if (invert) {
         uint64_t inv_n = pow(n, p - 2, p);
-#pragma omp parallel for schedule(static)
+#pragma omp parallel for schedule(static) num_threads(num_threads)
         for (int i = 0; i < n; i++) {
             a[i] = a[i] * inv_n % p;
         }
     }
 }
 
-// OpenMP版多项式乘法
-void NTT_multiply_parallel(uint64_t *a, uint64_t *b, uint64_t *result, int n, uint64_t p) {
+/**
+ * @brief 使用NTT的多项式乘法,使用openMP并行化处理
+ * @param a 输入多项式A
+ * @param b 输入多项式B
+ * @param result 结果数组
+ * @param n 多项式长度
+ * @param p 模数
+ * @details 该函数实现了NTT变换下的多项式乘法，包括正向NTT、点值乘法和逆向NTT。
+ */
+void NTT_multiply_parallel(uint64_t *a, uint64_t *b, uint64_t *result, int n, uint64_t p ,int threads = NUM_THREADS) {
     int len = (n << 1);
     uint64_t *fa = new uint64_t[len];
     uint64_t *fb = new uint64_t[len];
-#pragma omp parallel for schedule(static)
+#pragma omp parallel for schedule(static) num_threads(threads)
     for (int i = 0; i < n; i++) {
         fa[i] = a[i];
         fb[i] = b[i];
     }
-#pragma omp parallel for schedule(static)
+#pragma omp parallel for schedule(static) num_threads(threads)
     for (int i = n; i < len; i++) {
         fa[i] = fb[i] = 0;
     }
@@ -157,17 +196,18 @@ void NTT_multiply_parallel(uint64_t *a, uint64_t *b, uint64_t *result, int n, ui
     for (int i = 0; i < len; i++) {
         rev[i] = (rev[i >> 1] >> 1) | ((i & 1) << (bit - 1));
     }
+
     reverse(fa, len, bit, rev);
     reverse(fb, len, bit, rev);
-    NTT_parallel(fa, len, false, p, g);
-    NTT_parallel(fb, len, false, p, g);
-#pragma omp parallel for schedule(static)
+    NTT_parallel(fa, len, false, p);
+    NTT_parallel(fb, len, false, p);
+#pragma omp parallel for schedule(static) num_threads(threads)
     for (int i = 0; i < len; i++) {
         fa[i] = fa[i] * fb[i] % p;
     }
     reverse(fa, len, bit, rev);
-    NTT_parallel(fa, len, true, p, g);
-#pragma omp parallel for schedule(static)
+    NTT_parallel(fa, len, true, p);
+#pragma omp parallel for schedule(static) num_threads(threads)
     for (int i = 0; i < (n << 1) - 1; i++) {
         result[i] = fa[i];
     }
@@ -175,17 +215,29 @@ void NTT_multiply_parallel(uint64_t *a, uint64_t *b, uint64_t *result, int n, ui
     delete[] fb;
     delete[] rev;
 }
-// OpenMP版多项式乘法
+
+/**
+ * @brief 为CRT服务的多项式乘法
+ * @param a 输入多项式A 
+ * @param b 输入多项式B
+ * @param result 结果数组
+ * @param n 多项式长度
+ * @param p 模数
+ * @details 该函数实现了NTT变换下的多项式乘法，包括正向NTT、点值乘法和逆向NTT。
+ */
 void NTT_multiply_parallel_big(uint64_t *a, uint64_t *b, uint64_t *result, int n, uint64_t p) {
     int len = (n << 1);
     uint64_t *fa = new uint64_t[len];
     uint64_t *fb = new uint64_t[len];
-#pragma omp parallel for schedule(static)
+
+    int inner_threads = std::max(1, NUM_THREADS / GLOBAL_MOD_COUNT); // 8 / 4 = 2
+
+#pragma omp parallel for schedule(static) num_threads(inner_threads) // 使用 inner_threads (2)
     for (int i = 0; i < n; i++) {
         fa[i] = a[i] % p;
         fb[i] = b[i] % p;
     }
-#pragma omp parallel for schedule(static)
+#pragma omp parallel for schedule(static) num_threads(inner_threads) // 使用 inner_threads (2)
     for (int i = n; i < len; i++) {
         fa[i] = fb[i] = 0;
     }
@@ -196,20 +248,22 @@ void NTT_multiply_parallel_big(uint64_t *a, uint64_t *b, uint64_t *result, int n
         bit++;
     int *rev = new int[len];
     rev[0] = 0;
+    // 这个循环是串行的，用于计算rev表，它本身不并行
     for (int i = 0; i < len; i++) {
         rev[i] = (rev[i >> 1] >> 1) | ((i & 1) << (bit - 1));
     }
-    reverse(fa, len, bit, rev);
-    reverse(fb, len, bit, rev);
-    NTT_parallel(fa, len, false, p, g);
-    NTT_parallel(fb, len, false, p, g);
-#pragma omp parallel for schedule(static)
+    // 调用 reverse 和 NTT_parallel 时，会传入 inner_threads
+    reverse(fa, len, bit, rev, inner_threads); 
+    reverse(fb, len, bit, rev, inner_threads);
+    NTT_parallel(fa, len, false, p, inner_threads); 
+    NTT_parallel(fb, len, false, p, inner_threads);
+#pragma omp parallel for schedule(static) num_threads(inner_threads) // 使用 inner_threads (2)
     for (int i = 0; i < len; i++) {
         fa[i] = fa[i] * fb[i] % p;
     }
-    reverse(fa, len, bit, rev);
-    NTT_parallel(fa, len, true, p, g);
-#pragma omp parallel for schedule(static)
+    reverse(fa, len, bit, rev, inner_threads);
+    NTT_parallel(fa, len, true, p, inner_threads);
+#pragma omp parallel for schedule(static) num_threads(inner_threads) // 使用 inner_threads (2)
     for (int i = 0; i < (n << 1) - 1; i++) {
         result[i] = fa[i];
     }
@@ -217,21 +271,10 @@ void NTT_multiply_parallel_big(uint64_t *a, uint64_t *b, uint64_t *result, int n
     delete[] fb;
     delete[] rev;
 }
-// 示例主函数
 
-// NTT友好的4个固定模数
-const uint64_t GLOBAL_MOD_LIST[4] = {1004535809, 1224736769, 469762049, 998244353};
-const int GLOBAL_MOD_COUNT = 4;
-
-// 预分配的结果数组，避免动态分配
-uint64_t *GLOBAL_MOD_RESULTS[4] = {nullptr, nullptr, nullptr, nullptr};
-
-// 预计算模数乘积及逆元相关值
-__uint128_t GLOBAL_M = 0;          // 模数乘积
-__uint128_t GLOBAL_MI_VALUES[4];   // 各模数的"M/模数"值
-uint64_t GLOBAL_MI_INV_VALUES[4];  // 各模数的逆元值
-
-// 预计算模数相关的常数
+/**
+ * @brief 初始化全局变量
+ */
 void init_global_crt_values() {
     // 计算模数乘积
     GLOBAL_M = 1;
@@ -248,13 +291,15 @@ void init_global_crt_values() {
     }
 
     // 分配结果数组 - 使用最大可能的多项式长度
-    constexpr int MAX_RESULT_LEN = 300000;
+    constexpr int MAX_RESULT_LEN = 1 << 18;
     for (int i = 0; i < GLOBAL_MOD_COUNT; i++) {
         GLOBAL_MOD_RESULTS[i] = new uint64_t[MAX_RESULT_LEN];
     }
 }
 
-// 释放全局资源
+/**
+ * @brief 释放全局资源
+ */
 void cleanup_global_crt_values() {
     for (int i = 0; i < GLOBAL_MOD_COUNT; i++) {
         if (GLOBAL_MOD_RESULTS[i]) {
@@ -264,19 +309,30 @@ void cleanup_global_crt_values() {
     }
 }
 
-// 使用CRT和OpenMP的多项式乘法
+/**
+ * @brief 使用持久线程的CRT多项式乘法
+ * @param a 输入多项式A
+ * @param b 输入多项式B
+ * @param result 结果数组
+ * @param n 多项式长度
+ * @param p 模数
+ * @details 该函数实现了使用NTT的多项式乘法，使用OpenMP并行化处理。
+ */
 void CRT_NTT_multiply_openmp(uint64_t *a, uint64_t *b, uint64_t *result, int n, uint64_t p) {
     // 使用全局预分配的模数和结果数组
     int result_len = (n << 1) - 1;
 
 // 清零结果数组的必要部分
-#pragma omp parallel for num_threads(GLOBAL_MOD_COUNT)
-    for (int i = 0; i < GLOBAL_MOD_COUNT; i++) {
-        memset(GLOBAL_MOD_RESULTS[i], 0, sizeof(uint64_t) * result_len);
+#pragma omp parallel for num_threads(NUM_THREADS) schedule(static)
+    for(int i = 0;i<result_len;i++){
+        GLOBAL_MOD_RESULTS[0][i] = 0;
+        GLOBAL_MOD_RESULTS[1][i] = 0;
+        GLOBAL_MOD_RESULTS[2][i] = 0;
+        GLOBAL_MOD_RESULTS[3][i] = 0;
     }
 
 // 逐个模数计算NTT - 可并行执行
-#pragma omp parallel for num_threads(GLOBAL_MOD_COUNT)
+#pragma omp parallel for num_threads(GLOBAL_MOD_COUNT) schedule(static)
     for (int i = 0; i < GLOBAL_MOD_COUNT; i++) {
         NTT_multiply_parallel_big(a, b, GLOBAL_MOD_RESULTS[i], n, GLOBAL_MOD_LIST[i]);
     }
@@ -301,10 +357,8 @@ uint64_t a[300000], b[300000], ab[300000];
 int main(int argc, char *argv[]) {
     // 初始化OpenMP线程数
     omp_set_num_threads(NUM_THREADS);
-
-    // 初始化CRT全局变量
+    omp_set_nested(1);                // 启用嵌套并行
     init_global_crt_values();
-
     int test_begin = 0;
     int test_end = 4;
     for (int i = test_begin; i <= test_end; ++i) {
@@ -315,7 +369,6 @@ int main(int argc, char *argv[]) {
         memset(ab, 0, sizeof(ab));
 
         auto Start = std::chrono::high_resolution_clock::now();
-
         // 根据模数大小选择算法
         if (p_ > (1ULL << 32)) {
             CRT_NTT_multiply_openmp(a, b, ab, n_, p_);
@@ -330,13 +383,8 @@ int main(int argc, char *argv[]) {
         fCheck(ab, n_, i);
         std::cout << "average latency for n = " << n_ << " p = " << p_ << " : "
                   << ans << " (us) " << std::endl;
-
-        // 结果输出
         fWrite(ab, n_, i);
     }
-
-    // 清理全局资源
     cleanup_global_crt_values();
-
     return 0;
 }
