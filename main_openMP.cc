@@ -28,7 +28,7 @@ uint64_t GLOBAL_MI_INV_VALUES[4];  // 各模数的逆元值
 
 void fRead(uint64_t *a, uint64_t *b, int *n, uint64_t *p, int input_id) {
     // 数据输入函数
-    std::string str1 = "./nttdata/";
+    std::string str1 = "/nttdata/";
     std::string str2 = std::to_string(input_id);
     std::string strin = str1 + str2 + ".in";
     char data_path[strin.size() + 1];
@@ -47,7 +47,7 @@ void fRead(uint64_t *a, uint64_t *b, int *n, uint64_t *p, int input_id) {
 
 void fCheck(uint64_t *ab, int n, int input_id) {
     // 判断多项式乘法结果是否正确
-    std::string str1 = "./nttdata/";
+    std::string str1 = "/nttdata/";
     std::string str2 = std::to_string(input_id);
     std::string strout = str1 + str2 + ".out";
     char data_path[strout.size() + 1];
