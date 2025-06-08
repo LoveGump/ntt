@@ -230,43 +230,102 @@ void NTT_multiply_parallel_big(uint64_t *a, uint64_t *b, uint64_t *result, int n
     uint64_t *fa = new uint64_t[len];
     uint64_t *fb = new uint64_t[len];
 
-    int inner_threads = std::max(1, NUM_THREADS / GLOBAL_MOD_COUNT); // 8 / 4 = 2
+    // 计算每个模数计算使用的线程数
+    int inner_threads = std::max(1, NUM_THREADS / GLOBAL_MOD_COUNT);
 
-#pragma omp parallel for schedule(static) num_threads(inner_threads) // 使用 inner_threads (2)
-    for (int i = 0; i < n; i++) {
-        fa[i] = a[i] % p;
-        fb[i] = b[i] % p;
+    // 并行初始化数组
+    #pragma omp parallel sections num_threads(2)
+    {
+        #pragma omp section
+        {
+            #pragma omp parallel for schedule(static) num_threads(inner_threads)
+            for (int i = 0; i < n; i++) {
+                fa[i] = a[i] % p;
+            }
+        }
+        #pragma omp section
+        {
+            #pragma omp parallel for schedule(static) num_threads(inner_threads)
+            for (int i = 0; i < n; i++) {
+                fb[i] = b[i] % p;
+            }
+        }
     }
-#pragma omp parallel for schedule(static) num_threads(inner_threads) // 使用 inner_threads (2)
-    for (int i = n; i < len; i++) {
-        fa[i] = fb[i] = 0;
+
+    // 并行填充零
+    #pragma omp parallel sections num_threads(2)
+    {
+        #pragma omp section
+        {
+            #pragma omp parallel for schedule(static) num_threads(inner_threads)
+            for (int i = n; i < len; i++) {
+                fa[i] = 0;
+            }
+        }
+        #pragma omp section
+        {
+            #pragma omp parallel for schedule(static) num_threads(inner_threads)
+            for (int i = n; i < len; i++) {
+                fb[i] = 0;
+            }
+        }
     }
+
     int g = 3;
-
     int bit = 0;
     while ((1 << bit) < len)
         bit++;
     int *rev = new int[len];
     rev[0] = 0;
-    // 这个循环是串行的，用于计算rev表，它本身不并行
+
+    // 并行计算逆序表
+    #pragma omp parallel for schedule(static) num_threads(inner_threads)
     for (int i = 0; i < len; i++) {
         rev[i] = (rev[i >> 1] >> 1) | ((i & 1) << (bit - 1));
     }
-    // 调用 reverse 和 NTT_parallel 时，会传入 inner_threads
-    reverse(fa, len, bit, rev, inner_threads); 
-    reverse(fb, len, bit, rev, inner_threads);
-    NTT_parallel(fa, len, false, p, inner_threads); 
-    NTT_parallel(fb, len, false, p, inner_threads);
-#pragma omp parallel for schedule(static) num_threads(inner_threads) // 使用 inner_threads (2)
+
+    // 并行执行位逆序置换
+    #pragma omp parallel sections num_threads(2)
+    {
+        #pragma omp section
+        {
+            reverse(fa, len, bit, rev, inner_threads);
+        }
+        #pragma omp section
+        {
+            reverse(fb, len, bit, rev, inner_threads);
+        }
+    }
+
+    // 并行执行NTT变换
+    #pragma omp parallel sections num_threads(2)
+    {
+        #pragma omp section
+        {
+            NTT_parallel(fa, len, false, p, inner_threads);
+        }
+        #pragma omp section
+        {
+            NTT_parallel(fb, len, false, p, inner_threads);
+        }
+    }
+
+    // 并行执行点值乘法
+    #pragma omp parallel for schedule(static) num_threads(inner_threads)
     for (int i = 0; i < len; i++) {
         fa[i] = fa[i] * fb[i] % p;
     }
+
+    // 并行执行逆变换
     reverse(fa, len, bit, rev, inner_threads);
     NTT_parallel(fa, len, true, p, inner_threads);
-#pragma omp parallel for schedule(static) num_threads(inner_threads) // 使用 inner_threads (2)
+
+    // 并行复制结果
+    #pragma omp parallel for schedule(static) num_threads(inner_threads)
     for (int i = 0; i < (n << 1) - 1; i++) {
         result[i] = fa[i];
     }
+
     delete[] fa;
     delete[] fb;
     delete[] rev;
@@ -322,32 +381,31 @@ void CRT_NTT_multiply_openmp(uint64_t *a, uint64_t *b, uint64_t *result, int n, 
     // 使用全局预分配的模数和结果数组
     int result_len = (n << 1) - 1;
 
-// 清零结果数组的必要部分
-#pragma omp parallel for num_threads(NUM_THREADS) schedule(static)
-    for(int i = 0;i<result_len;i++){
+    // 清零结果数组的必要部分
+    #pragma omp parallel for num_threads(NUM_THREADS) schedule(static)
+    for(int i = 0; i < result_len; i++) {
         GLOBAL_MOD_RESULTS[0][i] = 0;
         GLOBAL_MOD_RESULTS[1][i] = 0;
         GLOBAL_MOD_RESULTS[2][i] = 0;
         GLOBAL_MOD_RESULTS[3][i] = 0;
     }
 
-// 逐个模数计算NTT - 可并行执行
-#pragma omp parallel for num_threads(GLOBAL_MOD_COUNT) schedule(static)
-    for (int i = 0; i < GLOBAL_MOD_COUNT; i++) {
+    // 并行处理每个模数的NTT计算
+    #pragma omp parallel for num_threads(GLOBAL_MOD_COUNT) schedule(static)
+    for(int i = 0; i < GLOBAL_MOD_COUNT; i++) {
         NTT_multiply_parallel_big(a, b, GLOBAL_MOD_RESULTS[i], n, GLOBAL_MOD_LIST[i]);
     }
 
-// 使用CRT合并结果
-#pragma omp parallel for num_threads(NUM_THREADS) schedule(static)
-    for (int j = 0; j < result_len; j++) {
-        // 完全展开4个模数的循环
-        __uint128_t term0 = GLOBAL_MI_VALUES[0] * ((GLOBAL_MOD_RESULTS[0][j] * GLOBAL_MI_INV_VALUES[0]) % GLOBAL_MOD_LIST[0]);
-        __uint128_t term1 = GLOBAL_MI_VALUES[1] * ((GLOBAL_MOD_RESULTS[1][j] * GLOBAL_MI_INV_VALUES[1]) % GLOBAL_MOD_LIST[1]);
-        __uint128_t term2 = GLOBAL_MI_VALUES[2] * ((GLOBAL_MOD_RESULTS[2][j] * GLOBAL_MI_INV_VALUES[2]) % GLOBAL_MOD_LIST[2]);
-        __uint128_t term3 = GLOBAL_MI_VALUES[3] * ((GLOBAL_MOD_RESULTS[3][j] * GLOBAL_MI_INV_VALUES[3]) % GLOBAL_MOD_LIST[3]);
-
-        __uint128_t sum = (term0 + term1 + term2 + term3) % GLOBAL_M;
-
+    // 并行合并结果
+    #pragma omp parallel for num_threads(NUM_THREADS) schedule(static)
+    for(int j = 0; j < result_len; j++) {
+        __uint128_t sum = 0;
+        for(int i = 0; i < GLOBAL_MOD_COUNT; i++) {
+            uint64_t mod_num = GLOBAL_MOD_LIST[i];
+            __uint128_t Mi = GLOBAL_MI_VALUES[i];
+            uint64_t Mi_inv = GLOBAL_MI_INV_VALUES[i];
+            sum = (sum + (Mi * ((GLOBAL_MOD_RESULTS[i][j] * Mi_inv) % mod_num))) % GLOBAL_M;
+        }
         result[j] = sum % p;
     }
 }
